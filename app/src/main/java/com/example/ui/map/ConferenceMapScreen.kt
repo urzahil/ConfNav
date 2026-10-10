@@ -268,8 +268,10 @@ fun ConferenceMapScreen(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(
-                    top = if (uiState.nextSession != null) 114.dp else 56.dp,
-                    end = 14.dp
+                    // Keep the button clear of the filter/next-event header while
+                    // using the same 16 dp inset from the visible map's top and right edges.
+                    top = if (uiState.nextSession != null) 130.dp else 72.dp,
+                    end = 16.dp
                 )
                 .size(44.dp)
                 .testTag("btn_fit_pins")
