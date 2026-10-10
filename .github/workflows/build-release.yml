@@ -1,0 +1,94 @@
+name: Build ConfNav Release APK
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.8.1"
+
+      - name: Configure Google Maps API key
+        env:
+          MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+        run: |
+          test -n "$MAPS_API_KEY" || { echo "MAPS_API_KEY secret is not configured"; exit 1; }
+          printf 'MAPS_API_KEY=%s\n' "$MAPS_API_KEY" > .env
+
+      - name: Prepare release signing
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          if [ -z "$RELEASE_KEYSTORE_BASE64" ]; then
+            echo "No release keystore configured; building an unsigned release APK."
+            exit 0
+          fi
+
+          if [ -z "$RELEASE_KEYSTORE_PASSWORD" ] || [ -z "$RELEASE_KEY_ALIAS" ] || [ -z "$RELEASE_KEY_PASSWORD" ]; then
+            echo "RELEASE_KEYSTORE_BASE64 is set, but one or more signing secrets are missing."
+            echo "Configure RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS and RELEASE_KEY_PASSWORD as well."
+            exit 1
+          fi
+
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          test -s "$RUNNER_TEMP/release.jks"
+          {
+            echo "KEYSTORE_PATH=$RUNNER_TEMP/release.jks"
+            echo "STORE_PASSWORD=$RELEASE_KEYSTORE_PASSWORD"
+            echo "KEY_ALIAS=$RELEASE_KEY_ALIAS"
+            echo "KEY_PASSWORD=$RELEASE_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Build release APK
+        run: gradle clean assembleRelease --no-daemon
+
+      - name: Prepare consistently named APK
+        run: |
+          set -eu
+          mkdir -p dist
+          apk_path="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$apk_path" || { echo "No release APK was produced"; exit 1; }
+          cp "$apk_path" dist/ConfNav-release.apk
+          test -s dist/ConfNav-release.apk
+
+      - name: Upload release APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ConfNav-release-${{ github.run_number }}
+          path: dist/ConfNav-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            dist/ConfNav-release.apk \
+            --generate-notes \
+            --title "$GITHUB_REF_NAME"

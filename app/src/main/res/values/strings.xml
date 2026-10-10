@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">ConfNav</string>
+    <string name="tab_schedule">Agenda</string>
+    <string name="tab_map">Map</string>
+    <string name="tab_manage">Manage</string>
+    <string name="filter_all">All Days</string>
+    <string name="filter_today">Today</string>
+    <string name="directions">Directions</string>
+    <string name="next_event">Next Event</string>
+    <string name="add_session">Add Session</string>
+    <string name="edit_session">Edit Session</string>
+</resources>

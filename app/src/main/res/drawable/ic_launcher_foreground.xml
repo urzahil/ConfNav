@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Drop shadow for pin -->
+    <path
+        android:fillColor="#33000000"
+        android:pathData="M54,80 C60,80 66,82 66,84 C66,86 60,88 54,88 C48,88 42,86 42,84 C42,82 48,80 54,80 Z" />
+    <!-- Conference Calendar base sheet -->
+    <path
+        android:fillColor="#DCFCE7"
+        android:pathData="M32,36 L76,36 A4,4 0 0 1 80,40 L80,76 A4,4 0 0 1 76,80 L32,80 A4,4 0 0 1 28,76 L28,40 A4,4 0 0 1 32,36 Z" />
+    <!-- Calendar header strip -->
+    <path
+        android:fillColor="#15803D"
+        android:pathData="M32,36 L76,36 A4,4 0 0 1 80,40 L80,47 L28,47 L28,40 A4,4 0 0 1 32,36 Z" />
+    <!-- Calendar binder rings -->
+    <path
+        android:pathData="M38,32 L38,38 M54,32 L54,38 M70,32 L70,38"
+        android:strokeWidth="2.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+    <!-- Calendar agenda lines -->
+    <path
+        android:pathData="M35,55 L48,55 M35,62 L45,62 M35,69 L50,69"
+        android:strokeWidth="2.5"
+        android:strokeColor="#86EFAC"
+        android:strokeLineCap="round" />
+    <!-- Prominent Conference Pin (Overlapping calendar) -->
+    <!-- Pin body: centered at (60, 58), pointing to (60, 78) -->
+    <path
+        android:fillColor="#16A34A"
+        android:pathData="M60,35 C50.5,35 43,42.5 43,52 C43,64 60,79 60,79 C60,79 77,64 77,52 C77,42.5 69.5,35 60,35 Z" />
+    <!-- Inner white badge in the pin with star/podium symbol -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M60,52 m-6,0 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0" />
+    <path
+        android:fillColor="#15803D"
+        android:pathData="M60,52 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+</vector>

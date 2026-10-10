@@ -1,0 +1,6 @@
+{
+  "name": "ConfNav",
+  "description": "Navigate conferences of any duration with dynamic calendar scheduling, interactive colored map pins, next event directions, and Google Maps geocoding.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
