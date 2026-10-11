@@ -165,13 +165,13 @@ fun ConferenceMapScreen(
 
     val isDarkTheme = isSystemInDarkTheme()
     val mapStyleOptions = remember(isDarkTheme) {
-        if (isDarkTheme) {
-            try {
+        try {
+            if (isDarkTheme) {
                 MapStyleOptions(DARK_MAP_STYLE_JSON)
-            } catch (_: Exception) {
-                null
+            } else {
+                MapStyleOptions(LIGHT_MAP_STYLE_CLEAN_JSON)
             }
-        } else {
+        } catch (_: Exception) {
             null
         }
     }
@@ -776,6 +776,20 @@ fun CampusRadarCanvas(
     }
 }
 
+private const val LIGHT_MAP_STYLE_CLEAN_JSON = """
+[
+  {
+    "featureType": "poi",
+    "stylers": [{ "visibility": "off" }]
+  },
+  {
+    "featureType": "transit.station",
+    "elementType": "labels.icon",
+    "stylers": [{ "visibility": "off" }]
+  }
+]
+"""
+
 private const val DARK_MAP_STYLE_JSON = """
 [
   {
@@ -797,18 +811,7 @@ private const val DARK_MAP_STYLE_JSON = """
   },
   {
     "featureType": "poi",
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#d59563" }]
-  },
-  {
-    "featureType": "poi.park",
-    "elementType": "geometry",
-    "stylers": [{ "color": "#263c3f" }]
-  },
-  {
-    "featureType": "poi.park",
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#6b9a76" }]
+    "stylers": [{ "visibility": "off" }]
   },
   {
     "featureType": "road",
@@ -846,9 +849,9 @@ private const val DARK_MAP_STYLE_JSON = """
     "stylers": [{ "color": "#2f3948" }]
   },
   {
-    "featureType": "transit.station",
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#d59563" }]
+    "featureType": "transit",
+    "elementType": "labels.icon",
+    "stylers": [{ "visibility": "off" }]
   },
   {
     "featureType": "water",
