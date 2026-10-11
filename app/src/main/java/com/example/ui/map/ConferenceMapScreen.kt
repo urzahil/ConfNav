@@ -287,7 +287,7 @@ fun ConferenceMapScreen(
                     // Keep the button clear of the filter/next-event header while
                     // using the same 16 dp inset from the visible map's top and right edges.
                     top = if (uiState.nextSession != null) 130.dp else 72.dp,
-                    end = 16.dp
+                    end = 8.dp
                 )
                 .size(44.dp)
                 .testTag("btn_fit_pins")
