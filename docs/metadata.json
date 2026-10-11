@@ -1,0 +1,6 @@
+{
+  "name": "Conference Session Builder",
+  "description": "Create, edit, import, and export conference sessions with location coordinates, schedules, and custom themes in JSON format.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
