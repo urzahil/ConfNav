@@ -5,7 +5,7 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    base: '/ConfNav-Web/',
+    base: '/ConfNav/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
