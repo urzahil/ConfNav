@@ -47,8 +47,12 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -60,6 +64,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.ConferenceSession
 import com.example.data.model.SessionJsonHelper
@@ -155,6 +162,32 @@ fun ScheduleScreen(
         }
     }
 
+    val listState = rememberLazyListState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var triggerScrollCount by remember { mutableIntStateOf(0) }
+
+    // Trigger scroll position check when app returns to foreground (ON_RESUME)
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                triggerScrollCount++
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // Auto-scroll to current day (or top of list if current day is out of range)
+    LaunchedEffect(uiState.selectedFilter, uiState.filteredSessions, triggerScrollCount) {
+        if (uiState.selectedFilter is DayFilter.All && uiState.filteredSessions.isNotEmpty()) {
+            val groupedByDate = uiState.filteredSessions.groupBy { it.date }
+            val targetIndex = calculateTargetIndex(groupedByDate)
+            listState.scrollToItem(targetIndex)
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -199,6 +232,7 @@ fun ScheduleScreen(
                 val groupedByDate = uiState.filteredSessions.groupBy { it.date }
 
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .fillMaxSize()
                         .testTag("schedule_list"),
@@ -221,6 +255,11 @@ fun ScheduleScreen(
                                 onEdit = { onNavigateToConfigure(session.id) }
                             )
                         }
+                    }
+
+                    // Extra bottom space so the target day header can always scroll to the very top of the screen
+                    item(key = "bottom_empty_space") {
+                        Spacer(modifier = Modifier.height(600.dp))
                     }
                 }
             }
@@ -682,4 +721,34 @@ fun EmptyScheduleView(
             }
         }
     }
+}
+
+private fun calculateTargetIndex(
+    groupedByDate: Map<String, List<ConferenceSession>>,
+    todayStr: String = ""
+): Int {
+    if (groupedByDate.isEmpty()) return 0
+
+    val actualTodayStr = if (todayStr.isNotBlank()) todayStr else LocalDate.now().toString()
+
+    val sortedDates = groupedByDate.keys.sorted()
+    val minDate = sortedDates.first()
+    val maxDate = sortedDates.last()
+
+    // If current day is before first day or after last day of conference -> top of list (0)
+    if (actualTodayStr < minDate || actualTodayStr > maxDate) {
+        return 0
+    }
+
+    // Find today's date or the first upcoming conference date
+    val targetDate = sortedDates.firstOrNull { it >= actualTodayStr } ?: minDate
+
+    var currentIndex = 0
+    for ((date, sessions) in groupedByDate) {
+        if (date == targetDate) {
+            return currentIndex
+        }
+        currentIndex += 1 + sessions.size // 1 for header + N for sessions
+    }
+    return 0
 }

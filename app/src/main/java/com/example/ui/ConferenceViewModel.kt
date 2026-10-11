@@ -38,7 +38,7 @@ data class ConferenceUiState(
     val selectedLocationPin: LocationGroup? = null,
     val nextSession: ConferenceSession? = null,
     val selectedFilter: DayFilter = DayFilter.All,
-    val availableFilters: List<DayFilter> = listOf(DayFilter.All, DayFilter.Today),
+    val availableFilters: List<DayFilter> = listOf(DayFilter.All),
     val isLoading: Boolean = false,
     val locationSuggestions: List<LocationSuggestion> = emptyList(),
     val isSearchingLocations: Boolean = false
@@ -86,7 +86,7 @@ class ConferenceViewModel(application: Application) : AndroidViewModel(applicati
 
             // Derive available filters based on unique dates from sessions
             val uniqueDates = sessions.map { it.date }.distinct().sorted()
-            val availableFilters = mutableListOf<DayFilter>(DayFilter.All, DayFilter.Today)
+            val availableFilters = mutableListOf<DayFilter>(DayFilter.All)
             uniqueDates.forEach { date ->
                 val friendlyDate = formatFriendlyDate(date)
                 availableFilters.add(DayFilter.SpecificDate(date, friendlyDate))
