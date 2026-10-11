@@ -5,6 +5,7 @@ An Android app for finding your way around a conference. Load a schedule, see wh
 Build your agenda in the companion web tool, [ConfNav-Web](https://urzahil.github.io/ConfNav-Web/), then load the exported JSON file into the app.
 
 ## Features
+
 - Agenda with day-by-day filtering and a "next event" pill that jumps straight to directions
 - Map with colour-coded pins, with sessions grouped by location
 - Add, edit and delete sessions directly in the app
