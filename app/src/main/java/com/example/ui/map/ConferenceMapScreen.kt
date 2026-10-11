@@ -1,5 +1,8 @@
 package com.example.ui.map
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -163,6 +166,17 @@ fun ConferenceMapScreen(
         }
     }
 
+    val hasLocationPermission = remember(context) {
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
     val isDarkTheme = isSystemInDarkTheme()
     val mapStyleOptions = remember(isDarkTheme) {
         try {
@@ -186,8 +200,9 @@ fun ConferenceMapScreen(
                     .fillMaxSize()
                     .testTag("google_map_view"),
                 cameraPositionState = cameraPositionState,
-                properties = remember(mapStyleOptions) {
+                properties = remember(mapStyleOptions, hasLocationPermission) {
                     MapProperties(
+                        isMyLocationEnabled = hasLocationPermission,
                         isBuildingEnabled = true,
                         isIndoorEnabled = true,
                         mapType = MapType.NORMAL,
