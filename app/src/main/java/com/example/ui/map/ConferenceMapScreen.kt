@@ -66,7 +66,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -105,7 +107,9 @@ fun ConferenceMapScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
+    var mapHeaderHeightPx by remember { mutableStateOf(0) }
 
     // Mode: Google Map or Campus Radar Map
     var isRadarMode by remember { mutableStateOf(false) }
@@ -288,6 +292,7 @@ fun ConferenceMapScreen(
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+                .onSizeChanged { mapHeaderHeightPx = it.height }
                 .padding(bottom = 6.dp)
         ) {
             // Day Filter Chips
@@ -321,10 +326,10 @@ fun ConferenceMapScreen(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(
-                    // Keep the button clear of the filter/next-event header while
-                    // using the same 16 dp inset from the visible map's top and right edges.
-                    top = if (uiState.nextSession != null) 130.dp else 72.dp,
-                    end = 8.dp
+                    // Position relative to the measured header, not a device-specific
+                    // offset, so the button stays inside the visible map area.
+                    top = with(density) { mapHeaderHeightPx.toDp() } + 16.dp,
+                    end = 16.dp
                 )
                 .size(44.dp)
                 .testTag("btn_fit_pins")
