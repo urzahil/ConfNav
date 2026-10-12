@@ -6,6 +6,9 @@ on:
 jobs:
   del_runs:
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read    
     steps:
       - name: Delete workflow runs
         uses: JuvenileQ/delete-workflow-runs@main
