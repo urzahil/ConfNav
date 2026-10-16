@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.AppDatabase
 import com.example.data.model.ConferenceSession
+import com.example.data.model.ImportReport
 import com.example.data.model.LocationGroup
 import com.example.data.model.SessionJsonHelper
 import com.example.data.network.LocationSearchHelper
@@ -13,21 +14,23 @@ import com.example.data.repository.ConferenceRepository
 import com.example.ui.components.PinColorHelper
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.LocalTime
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Locale
 
 sealed class DayFilter(open val label: String) {
     data object All : DayFilter("All Days")
-    data object Today : DayFilter("Today")
     data class SpecificDate(val date: String, override val label: String) : DayFilter(label)
 }
 
@@ -44,23 +47,22 @@ data class ConferenceUiState(
     val isSearchingLocations: Boolean = false
 )
 
+/** What an import did: sessions written, and sessions skipped because the agenda already had them. */
+data class ImportOutcome(val added: Int, val duplicates: Int)
+
+private data class LocationSearchState(
+    val suggestions: List<LocationSuggestion> = emptyList(),
+    val isSearching: Boolean = false
+)
+
 class ConferenceViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: ConferenceRepository
     private val locationSearchHelper: LocationSearchHelper
 
-    private val _selectedFilter = MutableStateFlow<DayFilter>(DayFilter.All)
-    val selectedFilter: StateFlow<DayFilter> = _selectedFilter.asStateFlow()
-
-    private val _selectedLocationPin = MutableStateFlow<LocationGroup?>(null)
-    val selectedLocationPin: StateFlow<LocationGroup?> = _selectedLocationPin.asStateFlow()
-
-    private val _locationSuggestions = MutableStateFlow<List<LocationSuggestion>>(emptyList())
-    val locationSuggestions: StateFlow<List<LocationSuggestion>> =
-        _locationSuggestions.asStateFlow()
-
-    private val _isSearchingLocations = MutableStateFlow(false)
-    val isSearchingLocations: StateFlow<Boolean> = _isSearchingLocations.asStateFlow()
+    private val selectedFilter = MutableStateFlow<DayFilter>(DayFilter.All)
+    private val selectedLocationPin = MutableStateFlow<LocationGroup?>(null)
+    private val locationSearch = MutableStateFlow(LocationSearchState())
 
     private var locationSearchJob: Job? = null
 
@@ -71,93 +73,75 @@ class ConferenceViewModel(application: Application) : AndroidViewModel(applicati
         repository = ConferenceRepository(database.conferenceDao())
         locationSearchHelper = LocationSearchHelper(application)
 
-        // App starts clean/empty on new installation
-        viewModelScope.launch {
-            repository.clearSampleEventsIfAny()
-        }
-
-        val coreUiState: StateFlow<ConferenceUiState> = combine(
+        uiState = combine(
             repository.allSessions,
-            _selectedFilter,
-            _selectedLocationPin
-        ) { sessions, filter, selectedPin ->
-            val todayStr = LocalDate.now().toString()
-            val nowTime = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
-
-            // Derive available filters based on unique dates from sessions
-            val uniqueDates = sessions.map { it.date }.distinct().sorted()
-            val availableFilters = mutableListOf<DayFilter>(DayFilter.All)
-            uniqueDates.forEach { date ->
-                val friendlyDate = formatFriendlyDate(date)
-                availableFilters.add(DayFilter.SpecificDate(date, friendlyDate))
-            }
-
-            // Filter sessions
-            val filtered = when (filter) {
-                is DayFilter.All -> sessions
-                is DayFilter.Today -> sessions.filter { it.date == todayStr }
-                is DayFilter.SpecificDate -> sessions.filter { it.date == filter.date }
-            }
-
-            // In the pins in the map, only show future events (ongoing or upcoming)
-            val futureSessionsForMap = filtered.filter { session ->
-                session.date > todayStr || (session.date == todayStr && session.endTime >= nowTime)
-            }
-
-            // Group only future sessions into location pins on the map
-            val locationGroups = repository.groupSessionsByLocation(futureSessionsForMap)
-
-            // Resolve next upcoming event (returns null if no more events)
-            val nextSession = calculateNextEvent(sessions, todayStr)
-
-            // If selected pin is no longer in filtered groups, reset or re-find
-            val activePin = if (selectedPin != null) {
-                locationGroups.firstOrNull { it.key == selectedPin.key }
-            } else {
-                null
-            }
-
-            ConferenceUiState(
-                sessions = sessions,
-                filteredSessions = filtered,
-                locationGroups = locationGroups,
-                selectedLocationPin = activePin,
-                nextSession = nextSession,
-                selectedFilter = filter,
-                availableFilters = availableFilters,
-                locationSuggestions = emptyList(),
-                isSearchingLocations = false
-            )
+            selectedFilter,
+            selectedLocationPin,
+            minuteTicker(),
+            locationSearch
+        ) { sessions, filter, selectedPin, now, search ->
+            buildState(sessions, filter, selectedPin, now, search)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = ConferenceUiState()
         )
+    }
 
-        // Location suggestions are transient UI state. Keep them out of the expensive
-        // session/map derivation so typing in the search box does not regroup every session.
-        uiState = combine(
-            coreUiState,
-            _locationSuggestions,
-            _isSearchingLocations
-        ) { state, suggestions, isSearching ->
-            state.copy(
-                locationSuggestions = suggestions,
-                isSearchingLocations = isSearching
-            )
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = ConferenceUiState()
+    /** Emits the current time now and again at the start of every minute while collected. */
+    private fun minuteTicker(): Flow<LocalDateTime> = flow {
+        while (true) {
+            val now = LocalDateTime.now()
+            emit(now)
+            val intoMinuteMs = now.second * 1000L + now.nano / 1_000_000L
+            delay((60_000L - intoMinuteMs).coerceAtLeast(1_000L))
+        }
+    }
+
+    private fun buildState(
+        sessions: List<ConferenceSession>,
+        filter: DayFilter,
+        selectedPin: LocationGroup?,
+        now: LocalDateTime,
+        search: LocationSearchState
+    ): ConferenceUiState {
+        val availableFilters = mutableListOf<DayFilter>(DayFilter.All)
+        sessions.map { it.date }.distinct().sorted().forEach { date ->
+            availableFilters.add(DayFilter.SpecificDate(date, formatFriendlyDate(date)))
+        }
+
+        val filtered = when (filter) {
+            is DayFilter.All -> sessions
+            is DayFilter.SpecificDate -> sessions.filter { it.date == filter.date }
+        }
+
+        // The map only shows sessions that are ongoing or still to come.
+        val locationGroups = repository.groupSessionsByLocation(
+            filtered.filter { AgendaLogic.isOngoingOrUpcoming(it, now) }
+        )
+
+        // If the selected pin is no longer present, drop the selection.
+        val activePin = selectedPin?.let { pin -> locationGroups.firstOrNull { it.key == pin.key } }
+
+        return ConferenceUiState(
+            sessions = sessions,
+            filteredSessions = filtered,
+            locationGroups = locationGroups,
+            selectedLocationPin = activePin,
+            nextSession = AgendaLogic.nextSession(sessions, now),
+            selectedFilter = filter,
+            availableFilters = availableFilters,
+            locationSuggestions = search.suggestions,
+            isSearchingLocations = search.isSearching
         )
     }
 
     fun setDayFilter(filter: DayFilter) {
-        _selectedFilter.value = filter
+        selectedFilter.value = filter
     }
 
     fun selectLocationPin(pin: LocationGroup?) {
-        _selectedLocationPin.value = pin
+        selectedLocationPin.value = pin
     }
 
     /**
@@ -222,8 +206,8 @@ class ConferenceViewModel(application: Application) : AndroidViewModel(applicati
     fun deleteSession(sessionId: Long) {
         viewModelScope.launch {
             repository.deleteSessionById(sessionId)
-            if (_selectedLocationPin.value?.sessions?.any { it.id == sessionId } == true) {
-                _selectedLocationPin.value = null
+            if (selectedLocationPin.value?.sessions?.any { it.id == sessionId } == true) {
+                selectedLocationPin.value = null
             }
         }
     }
@@ -232,43 +216,49 @@ class ConferenceViewModel(application: Application) : AndroidViewModel(applicati
         return SessionJsonHelper.exportToJson(uiState.value.sessions)
     }
 
+    /** Parses file contents; the caller decides what to do with the report. */
+    fun parseImport(jsonText: String): Result<ImportReport> = SessionJsonHelper.parse(jsonText)
+
     fun importSessions(
         newSessions: List<ConferenceSession>,
         replaceAll: Boolean,
-        onComplete: (Int) -> Unit = {}
+        onComplete: (ImportOutcome) -> Unit = {}
     ) {
         viewModelScope.launch {
-            if (replaceAll) {
-                repository.clearAll()
-            }
-            val currentAll = if (replaceAll) emptyList() else uiState.value.sessions
-            val processedSessions = mutableListOf<ConferenceSession>()
-            val runningSessions = currentAll.toMutableList()
+            // Read the database directly so the result never depends on a stale UI snapshot.
+            val existing = if (replaceAll) emptyList() else repository.allSessions.first()
+            val knownKeys = existing.map { AgendaLogic.duplicateKey(it) }.toHashSet()
+            val toAdd = newSessions.filter { knownKeys.add(AgendaLogic.duplicateKey(it)) }
+            val duplicates = newSessions.size - toAdd.size
 
-            for (rawSession in newSessions) {
+            val processedSessions = mutableListOf<ConferenceSession>()
+            val runningSessions = existing.toMutableList()
+
+            for (rawSession in toAdd) {
                 val cleanVenue = rawSession.locationName.trim()
-                val assignedColor =
-                    if (rawSession.colorHex.isNotBlank() && rawSession.colorHex.startsWith("#")) {
-                        val existingColor = runningSessions.firstOrNull {
-                            it.locationName.trim()
-                                .equals(cleanVenue, ignoreCase = true) && it.colorHex.isNotBlank()
-                        }?.colorHex
-                        existingColor ?: rawSession.colorHex
-                    } else {
-                        val usedColors = runningSessions
-                            .filter { it.colorHex.isNotBlank() }
-                            .map { it.colorHex }
-                            .toSet()
-                        PinColorHelper.getUnusedOrDistinctColor(usedColors, cleanVenue)
-                    }
+                // Sessions at the same venue always share one pin colour.
+                val venueColor = runningSessions.firstOrNull {
+                    it.locationName.trim().equals(cleanVenue, ignoreCase = true) &&
+                            it.colorHex.isNotBlank()
+                }?.colorHex
+                val assignedColor = venueColor
+                    ?: rawSession.colorHex.takeIf { it.isNotBlank() }
+                    ?: PinColorHelper.getUnusedOrDistinctColor(
+                        runningSessions.filter { it.colorHex.isNotBlank() }.map { it.colorHex }.toSet(),
+                        cleanVenue
+                    )
 
                 val finalized = rawSession.copy(id = 0L, colorHex = assignedColor)
                 processedSessions.add(finalized)
                 runningSessions.add(finalized)
             }
 
-            repository.insertSessions(processedSessions)
-            onComplete(processedSessions.size)
+            if (replaceAll) {
+                repository.replaceAll(processedSessions)
+            } else if (processedSessions.isNotEmpty()) {
+                repository.insertSessions(processedSessions)
+            }
+            onComplete(ImportOutcome(added = processedSessions.size, duplicates = duplicates))
         }
     }
 
@@ -288,66 +278,38 @@ class ConferenceViewModel(application: Application) : AndroidViewModel(applicati
 
         val cleanQuery = query.trim()
         if (cleanQuery.length < 2) {
-            _locationSuggestions.value = emptyList()
-            _isSearchingLocations.value = false
+            locationSearch.value = LocationSearchState()
             return
         }
 
         locationSearchJob = viewModelScope.launch {
             delay(300)
-            _isSearchingLocations.value = true
+            locationSearch.value = locationSearch.value.copy(isSearching = true)
             try {
-                _locationSuggestions.value = locationSearchHelper.searchSuggestions(cleanQuery)
+                val results = locationSearchHelper.searchSuggestions(cleanQuery)
+                locationSearch.value = LocationSearchState(suggestions = results, isSearching = true)
             } finally {
-                _isSearchingLocations.value = false
+                locationSearch.value = locationSearch.value.copy(isSearching = false)
             }
         }
     }
 
-    private fun calculateNextEvent(
-        sessions: List<ConferenceSession>,
-        todayStr: String
-    ): ConferenceSession? {
-        if (sessions.isEmpty()) return null
-
-        val nowTime = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
-
-        // 1. Check today's upcoming or currently ongoing sessions
-        val todayUpcoming = sessions
-            .filter { it.date == todayStr && it.endTime >= nowTime }
-            .sortedBy { it.startTime }
-
-        if (todayUpcoming.isNotEmpty()) {
-            return todayUpcoming.first()
-        }
-
-        // 2. Check future days
-        val futureDays = sessions
-            .filter { it.date > todayStr }
-            .sortedWith(compareBy({ it.date }, { it.startTime }))
-
-        if (futureDays.isNotEmpty()) {
-            return futureDays.first()
-        }
-
-        // 3. No more events -> return null so no pill is shown
-        return null
-    }
-
     companion object {
+        /** Short day label for filter chips, in the device's language (e.g. "16 Oct"). */
         fun formatFriendlyDate(dateStr: String): String {
             return try {
-                val parsed = LocalDate.parse(dateStr)
-                parsed.format(DateTimeFormatter.ofPattern("d MMM", Locale.UK))
+                LocalDate.parse(dateStr)
+                    .format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()))
             } catch (_: Exception) {
                 dateStr
             }
         }
 
-        fun formatEuropeanDate(dateStr: String): String {
+        /** Date in the device's locale and preferred style (e.g. "Oct 16, 2026"). */
+        fun formatShortDate(dateStr: String): String {
             return try {
-                val parsed = LocalDate.parse(dateStr)
-                parsed.format(DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.UK))
+                LocalDate.parse(dateStr)
+                    .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(Locale.getDefault()))
             } catch (_: Exception) {
                 dateStr
             }

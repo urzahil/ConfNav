@@ -28,3 +28,8 @@
 # These providers are not bundled by the app and are not required on Android.
 -dontwarn org.conscrypt.**
 -dontwarn org.openjsse.**
+
+# Keep line numbers in crash stack traces; the mapping file (app/build/outputs/mapping) is
+# uploaded by the release workflow so they can be de-obfuscated.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

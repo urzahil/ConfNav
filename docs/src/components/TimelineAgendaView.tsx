@@ -104,6 +104,7 @@ export const TimelineAgendaView: React.FC<TimelineAgendaViewProps> = ({
                         <span className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
                           <User className="w-3 h-3 text-slate-400" />
                           {session.speaker}
+                          {session.speakerRole && <span className="font-normal text-slate-400"> · {session.speakerRole}</span>}
                         </span>
                         {session.address && (
                           <span className="truncate max-w-xs text-slate-400">

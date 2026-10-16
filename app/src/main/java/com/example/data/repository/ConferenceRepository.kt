@@ -14,52 +14,25 @@ class ConferenceRepository(private val dao: ConferenceDao) {
 
     suspend fun insertSessions(sessions: List<ConferenceSession>) = dao.insertSessions(sessions)
 
+    /** Atomically swaps the whole agenda for [sessions]. */
+    suspend fun replaceAll(sessions: List<ConferenceSession>) = dao.replaceAll(sessions)
+
     suspend fun updateSession(session: ConferenceSession) = dao.updateSession(session)
 
     suspend fun deleteSessionById(id: Long) = dao.deleteSessionById(id)
 
-    suspend fun clearAll() = dao.clearAll()
-
     /**
-     * Remove any leftover sample demo sessions from previous template builds
-     * so the app starts completely clean.
-     */
-    suspend fun clearSampleEventsIfAny() {
-        val sampleTitles = setOf(
-            "Opening Keynote: The Next Frontier in Tech",
-            "Modern Android & Jetpack Compose Masterclass",
-            "Designing Spatial & Ambient User Interfaces",
-            "Edge Computing & Low-Latency Geocoding",
-            "Fireside Chat: AI Ethics & Systems Architecture",
-            "Conference Hackathon Showcase & Demos",
-            "Closing Keynote & Awards Ceremony"
-        )
-        // Remove only the known template sessions. Never clear user-created sessions.
-        try {
-            dao.deleteByTitles(sampleTitles.toList())
-        } catch (_: Exception) {
-            // Cleanup is best-effort; failure must never affect the user's agenda.
-        }
-    }
-
-    /**
-     * Group sessions by unique location (matching lat/lng or location name).
-     * If multiple events share the same location, they are grouped under one pin.
+     * Group sessions into map pins, one per venue. Sessions without usable coordinates are
+     * skipped. Sessions share a pin when they have the same venue name (ignoring case and
+     * extra spaces), so small coordinate differences between rows do not create duplicate pins.
+     * A session with no venue name is grouped by its coordinates instead.
      */
     fun groupSessionsByLocation(sessions: List<ConferenceSession>): List<LocationGroup> {
         val grouped = LinkedHashMap<String, MutableList<ConferenceSession>>()
 
         for (session in sessions) {
-            // Group key based on location name and coordinates
-            val key = "${session.locationName.trim().lowercase()}_${
-                String.format(
-                    java.util.Locale.US,
-                    "%.4f,%.4f",
-                    session.latitude,
-                    session.longitude
-                )
-            }"
-            grouped.getOrPut(key) { mutableListOf() }.add(session)
+            if (!session.hasLocation) continue
+            grouped.getOrPut(locationKey(session)) { mutableListOf() }.add(session)
         }
 
         var index = 0
@@ -81,6 +54,15 @@ class ConferenceRepository(private val dao: ConferenceDao) {
                 colorHex = color,
                 sessions = sessionList.sortedBy { "${it.date} ${it.startTime}" }
             )
+        }
+    }
+
+    private fun locationKey(session: ConferenceSession): String {
+        val name = session.locationName.trim().lowercase().replace(Regex("\\s+"), " ")
+        return if (name.isNotEmpty()) {
+            name
+        } else {
+            String.format(java.util.Locale.US, "%.4f,%.4f", session.latitude, session.longitude)
         }
     }
 }

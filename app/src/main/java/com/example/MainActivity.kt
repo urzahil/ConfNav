@@ -57,10 +57,6 @@ enum class NavigationTab(val title: String) {
     AGENDA("Agenda"),
     MAP("Map"),
     CONFIGURE("Configure");
-
-    companion object {
-        val SCHEDULE = AGENDA
-    }
 }
 
 @Composable

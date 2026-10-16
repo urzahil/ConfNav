@@ -72,6 +72,14 @@ jobs:
           cp "$apk_path" dist/ConfNav-release.apk
           test -s dist/ConfNav-release.apk
 
+      - name: Upload R8 mapping file (to de-obfuscate crash stack traces)
+        uses: actions/upload-artifact@v7
+        with:
+          name: ConfNav-mapping-${{ github.run_number }}
+          path: app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: warn
+          retention-days: 90
+
       - name: Upload release APK artifact
         uses: actions/upload-artifact@v7
         with:

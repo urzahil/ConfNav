@@ -89,6 +89,11 @@ secrets {
 
 googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.WARN }
 
+// Export Room schemas so every database version is kept in version control (app/schemas).
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(platform(libs.firebase.bom))
@@ -117,7 +122,7 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.retrofit)
     testImplementation(libs.androidx.compose.ui.test.junit4)
-    testImplementation(libs.androidx.core)
+    testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.junit)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

@@ -110,7 +110,7 @@ fun NextEventPill(
                     horizontalArrangement = Arrangement.spacedBy(3.dp),
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .clickable { onNavigateToMap?.invoke(session) }
+                        .clickable(enabled = session.hasLocation) { onNavigateToMap?.invoke(session) }
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Icon(
@@ -162,8 +162,8 @@ fun NextEventPill(
                     }
                 }
 
-                // Compact "Directions" Button
-                ElevatedButton(
+                // Compact "Directions" Button (only when the session has map coordinates)
+                if (session.hasLocation) ElevatedButton(
                     onClick = {
                         openDirections(context, session)
                     },

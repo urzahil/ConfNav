@@ -38,7 +38,16 @@ jobs:
         uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
-        run: bun install
+        run: |
+          if [ -f bun.lock ] || [ -f bun.lockb ]; then
+            bun install --frozen-lockfile
+          else
+            echo "::warning::No bun.lock committed; run bun install in docs/ and commit it for reproducible builds."
+            bun install
+          fi
+
+      - name: Type-check
+        run: bun run lint
 
       - name: Build
         run: bun run build

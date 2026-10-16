@@ -2,6 +2,7 @@ export interface ConferenceSession {
   id: string; // Internal identifier for React list management
   title: string;
   speaker: string;
+  speakerRole?: string; // e.g. "Staff Engineer"
   date: string; // YYYY-MM-DD
   startTime: string; // HH:mm
   endTime: string; // HH:mm
@@ -10,10 +11,29 @@ export interface ConferenceSession {
   latitude: number;
   longitude: number;
   colorHex: string;
+  track?: string; // e.g. "Keynote"
+  description?: string;
   extraFields?: Record<string, unknown>; // Preserves any additional custom fields from JSON
 }
 
 export type ExportedSession = Omit<ConferenceSession, 'id' | 'extraFields'> & Record<string, unknown>;
+
+/** Keys the app understands; anything else in an imported file is kept under `extraFields`. */
+export const STANDARD_SESSION_KEYS = [
+  'title',
+  'speaker',
+  'speakerRole',
+  'date',
+  'startTime',
+  'endTime',
+  'locationName',
+  'address',
+  'latitude',
+  'longitude',
+  'colorHex',
+  'track',
+  'description',
+] as const;
 
 export const COLOR_PALETTE_PRESETS = [
   { name: 'Gold / Amber', hex: '#CA8A04' },
