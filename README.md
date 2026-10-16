@@ -26,7 +26,7 @@ Easily build and customise your agenda in the companion web tool, [ConfNav](http
    gradle testDebugUnitTest lintDebug
    ```
 
-Release builds are produced by the manual *Build ConfNav Release APK* workflow. It uploads the R8 `mapping.txt` next to the APK; keep it to de-obfuscate crash stack traces.
+Release builds are produced by the manual *Build ConfNav Release APK* workflow.
 
 Room schemas are exported to `app/schemas/`. Commit the files that appear there after a build, and add an explicit `Migration` whenever the database version changes.
 
