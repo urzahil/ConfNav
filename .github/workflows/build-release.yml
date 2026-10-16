@@ -2,15 +2,12 @@ name: Build ConfNav Release APK
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - "v*"
 
 permissions:
   contents: write
 
 jobs:
-  build-release:
+  release:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
