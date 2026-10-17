@@ -16,8 +16,8 @@ android {
         applicationId = "com.aistudio.confnav.xrqptz"
         minSdk = 24
         targetSdk = 36
-        versionCode = 15
-        versionName = "1.9.6"
+        versionCode = 10
+        versionName = "1.10.0"
 
         manifestPlaceholders["MAPS_API_KEY"] = ""
 
