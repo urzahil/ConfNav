@@ -88,8 +88,19 @@ export const SessionCard: React.FC<SessionCardProps> = ({
             <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400">
               <User className="w-3.5 h-3.5" />
             </div>
-            <span>{session.speaker}</span>
+            <span>
+              {session.speaker}
+              {session.speakerRole && (
+                <span className="font-normal text-slate-500 dark:text-slate-400"> · {session.speakerRole}</span>
+              )}
+            </span>
           </div>
+
+          {session.track && (
+            <span className="inline-block mb-2 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900">
+              {session.track}
+            </span>
+          )}
 
           {/* Extra Custom Fields Tags */}
           {session.extraFields && Object.keys(session.extraFields).length > 0 && (

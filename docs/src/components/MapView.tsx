@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
+import { escapeHtml, safeColor } from '../utils/html';
 import { ConferenceSession } from '../types';
 import { createCustomMarkerIcon } from './LeafletIconHelper';
 import { Maximize2, MapPin } from 'lucide-react';
@@ -71,21 +72,23 @@ export const MapView: React.FC<MapViewProps> = ({
         icon: createCustomMarkerIcon(session.colorHex, session.locationName),
       });
 
+      // Everything interpolated below comes from user-editable or imported JSON, so it is escaped.
+      const color = safeColor(session.colorHex);
       const popupContent = `
         <div style="font-family: inherit; min-width: 180px; padding: 4px;">
           <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${session.colorHex};"></span>
-            <span style="font-size: 11px; font-weight: 700; color: ${session.colorHex}; text-transform: uppercase;">${session.locationName}</span>
+            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${color};"></span>
+            <span style="font-size: 11px; font-weight: 700; color: ${color}; text-transform: uppercase;">${escapeHtml(session.locationName)}</span>
           </div>
-          <div style="font-weight: 700; font-size: 14px; color: #0f172a; margin-bottom: 2px;">${session.title}</div>
-          <div style="font-size: 12px; color: #475569; margin-bottom: 6px;">Speaker: <b>${session.speaker}</b></div>
+          <div style="font-weight: 700; font-size: 14px; color: #0f172a; margin-bottom: 2px;">${escapeHtml(session.title)}</div>
+          <div style="font-size: 12px; color: #475569; margin-bottom: 6px;">Speaker: <b>${escapeHtml(session.speaker)}</b></div>
           <div style="font-size: 11px; color: #64748b; margin-bottom: 8px;">
-            📅 ${session.date} | ⏰ ${session.startTime} - ${session.endTime}
+            📅 ${escapeHtml(session.date)} | ⏰ ${escapeHtml(session.startTime)} - ${escapeHtml(session.endTime)}
           </div>
           <div style="font-size: 11px; color: #64748b; margin-bottom: 10px; font-style: italic;">
-            📍 ${session.address || 'No address specified'}
+            📍 ${escapeHtml(session.address || 'No address specified')}
           </div>
-          <button id="edit-session-btn-${session.id}" style="width: 100%; padding: 6px 10px; font-size: 12px; font-weight: 600; background: #d97706; color: white; border: none; border-radius: 6px; cursor: pointer;">
+          <button id="edit-session-btn-${escapeHtml(session.id)}" style="width: 100%; padding: 6px 10px; font-size: 12px; font-weight: 600; background: #d97706; color: white; border: none; border-radius: 6px; cursor: pointer;">
             Edit Session
           </button>
         </div>

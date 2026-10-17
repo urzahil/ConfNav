@@ -132,100 +132,54 @@ fun ConfigureSessionScreen(
     // Dialog state for delete confirmation
     var sessionToDelete by remember { mutableStateOf<ConferenceSession?>(null) }
 
-    // Export / Import JSON State
-    var pendingImportSessions by remember { mutableStateOf<List<ConferenceSession>?>(null) }
+    // Fields the form does not show but must keep when a session is edited
+    var track by remember { mutableStateOf("") }
+    var isBookmarked by remember { mutableStateOf(true) }
 
-    // Direct JSON file save launcher for Export
-    val exportDocumentLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json")
-    ) { uri: Uri? ->
-        if (uri != null) {
-            try {
-                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    val jsonBytes = viewModel.exportSessionsJson().toByteArray(Charsets.UTF_8)
-                    outputStream.write(jsonBytes)
-                    outputStream.flush()
-                }
-                Toast.makeText(
-                    context,
-                    "Saved conference_sessions.json successfully!",
-                    Toast.LENGTH_LONG
-                ).show()
-            } catch (e: Exception) {
-                Toast.makeText(context, "Failed to save file: ${e.message}", Toast.LENGTH_LONG)
-                    .show()
-            }
-        }
+    fun clearForm() {
+        currentId = 0L
+        title = ""
+        speaker = ""
+        speakerRole = ""
+        startTime = ""
+        endTime = ""
+        locationName = ""
+        locationAddress = ""
+        locationQuery = ""
+        latitude = 0.0
+        longitude = 0.0
+        description = ""
+        track = ""
+        isBookmarked = true
     }
 
-    // Direct JSON file picker launcher for Import (goes straight to file loading)
-    val jsonFilePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            try {
-                val jsonText = context.contentResolver.openInputStream(uri)?.use { stream ->
-                    stream.bufferedReader().readText()
-                }.orEmpty()
-
-                if (jsonText.isBlank()) {
-                    Toast.makeText(context, "Selected file is empty", Toast.LENGTH_SHORT).show()
-                } else {
-                    val parseResult = SessionJsonHelper.importFromJson(jsonText)
-                    if (parseResult.isFailure) {
-                        val errorMsg =
-                            parseResult.exceptionOrNull()?.message ?: "Invalid JSON syntax"
-                        Toast.makeText(context, "Import failed: $errorMsg", Toast.LENGTH_LONG)
-                            .show()
-                    } else {
-                        val parsedSessions = parseResult.getOrThrow()
-                        if (parsedSessions.isEmpty()) {
-                            Toast.makeText(
-                                context,
-                                "No valid sessions found in JSON file",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        } else if (uiState.sessions.isEmpty()) {
-                            // Agenda is currently empty: import directly!
-                            viewModel.importSessions(parsedSessions, replaceAll = true) { count ->
-                                Toast.makeText(
-                                    context,
-                                    "Successfully imported $count sessions!",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
-                        } else {
-                            // Agenda already has sessions: prompt to add or replace
-                            pendingImportSessions = parsedSessions
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Toast.makeText(context, "Failed to read file: ${e.message}", Toast.LENGTH_LONG)
-                    .show()
-            }
-        }
+    fun loadSession(session: ConferenceSession) {
+        currentId = session.id
+        title = session.title
+        speaker = session.speaker
+        speakerRole = session.speakerRole
+        selectedDate = session.date
+        startTime = session.startTime
+        endTime = session.endTime
+        locationName = session.locationName
+        locationAddress = session.address
+        latitude = session.latitude
+        longitude = session.longitude
+        description = session.description
+        locationQuery = session.locationName
+        track = session.track
+        isBookmarked = session.isBookmarked
     }
 
-    // Prepopulate when editing
-    LaunchedEffect(editingSessionId, uiState.sessions) {
-        if (editingSessionId != null && editingSessionId != 0L) {
-            val existing = uiState.sessions.firstOrNull { it.id == editingSessionId }
-            if (existing != null) {
-                currentId = existing.id
-                title = existing.title
-                speaker = existing.speaker
-                speakerRole = existing.speakerRole
-                selectedDate = existing.date
-                startTime = existing.startTime
-                endTime = existing.endTime
-                locationName = existing.locationName
-                locationAddress = existing.address
-                latitude = existing.latitude
-                longitude = existing.longitude
-                description = existing.description
-                locationQuery = existing.locationName
-            }
+    // JSON export / import (file pickers, add-or-replace dialog and result messages)
+    val importExport = rememberSessionImportExport(viewModel, uiState.sessions.size)
+
+    // Fill the form once when an edit starts. It is keyed on the session being present rather than on
+    // the whole list, so unrelated database changes never overwrite what the user is typing.
+    val sessionBeingEdited = uiState.sessions.firstOrNull { it.id == editingSessionId }
+    LaunchedEffect(editingSessionId, sessionBeingEdited != null) {
+        if (editingSessionId != null && editingSessionId != 0L && sessionBeingEdited != null) {
+            loadSession(sessionBeingEdited)
         }
     }
 
@@ -238,7 +192,7 @@ fun ConfigureSessionScreen(
     val formattedSelectedDate = remember(selectedDate) {
         try {
             val parsed = LocalDate.parse(selectedDate)
-            parsed.format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale.UK))
+            parsed.format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale.getDefault()))
         } catch (_: Exception) {
             selectedDate
         }
@@ -415,7 +369,7 @@ fun ConfigureSessionScreen(
                                     val isSelected = selectedDate == dateStr
                                     val shortLabel = try {
                                         val d = LocalDate.parse(dateStr)
-                                        d.format(DateTimeFormatter.ofPattern("d MMM", Locale.UK))
+                                        d.format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()))
                                     } catch (_: Exception) {
                                         dateStr
                                     }
@@ -742,14 +696,7 @@ fun ConfigureSessionScreen(
                             OutlinedButton(
                                 onClick = {
                                     // Return to the screen that invoked this edit.
-                                    currentId = 0L
-                                    title = ""
-                                    speaker = ""
-                                    speakerRole = ""
-                                    locationName = ""
-                                    locationAddress = ""
-                                    locationQuery = ""
-                                    description = ""
+                                    clearForm()
                                     onEditCancelled()
                                     selectedTab = 1
                                 },
@@ -771,21 +718,47 @@ fun ConfigureSessionScreen(
                                     ).show()
                                     return@Button
                                 }
-                                if (locationName.isBlank()) {
-                                    // Fallback location if user didn't pick from autocomplete
-                                    locationName =
-                                        if (locationQuery.isNotBlank()) locationQuery else "Conference Hall"
-                                    locationAddress = "Conference Center Campus"
+                                val parsedStart = SessionJsonHelper.parseTime(startTime)
+                                val parsedEnd = SessionJsonHelper.parseTime(endTime)
+                                if (parsedStart == null || parsedEnd == null) {
+                                    Toast.makeText(
+                                        context,
+                                        "Enter start and end times as 24-hour HH:mm, e.g. 09:30",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    return@Button
                                 }
+                                if (!parsedEnd.isAfter(parsedStart)) {
+                                    Toast.makeText(
+                                        context,
+                                        "End time must be after the start time",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    return@Button
+                                }
+                                if (locationName.isBlank()) {
+                                    // Allow a typed venue name that wasn't picked from autocomplete.
+                                    if (locationQuery.isBlank()) {
+                                        Toast.makeText(
+                                            context,
+                                            "Please choose or enter a location",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        return@Button
+                                    }
+                                    locationName = locationQuery.trim()
+                                }
+                                val hasCoordinates = !(latitude == 0.0 && longitude == 0.0)
 
+                                val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
                                 val session = ConferenceSession(
                                     id = currentId,
                                     title = title.trim(),
                                     speaker = speaker.trim(),
                                     speakerRole = speakerRole.trim(),
                                     date = selectedDate,
-                                    startTime = startTime.trim(),
-                                    endTime = endTime.trim(),
+                                    startTime = parsedStart.format(timeFormat),
+                                    endTime = parsedEnd.format(timeFormat),
                                     locationName = locationName.trim(),
                                     address = locationAddress.trim(),
                                     latitude = latitude,
@@ -794,25 +767,23 @@ fun ConfigureSessionScreen(
                                         locationName.trim(),
                                         currentId
                                     ),
-                                    track = "",
-                                    description = description.trim()
+                                    track = track,
+                                    description = description.trim(),
+                                    isBookmarked = isBookmarked
                                 )
 
+                                val wasEdit = currentId != 0L
                                 viewModel.saveSession(session) {
+                                    val saved = if (wasEdit) "Session updated!" else "Session added to agenda!"
+                                    val note = if (hasCoordinates) "" else
+                                        " No coordinates were found, so it won't appear on the map."
                                     Toast.makeText(
                                         context,
-                                        if (currentId != 0L) "Session updated!" else "Session added to agenda!",
-                                        Toast.LENGTH_SHORT
+                                        saved + note,
+                                        if (hasCoordinates) Toast.LENGTH_SHORT else Toast.LENGTH_LONG
                                     ).show()
                                     // Reset form
-                                    currentId = 0L
-                                    title = ""
-                                    speaker = ""
-                                    speakerRole = ""
-                                    locationName = ""
-                                    locationAddress = ""
-                                    locationQuery = ""
-                                    description = ""
+                                    clearForm()
                                     onSessionSaved()
                                     selectedTab = 1
                                 }
@@ -839,206 +810,19 @@ fun ConfigureSessionScreen(
             }
         } else {
             // ==================== ALL SESSIONS MANAGEMENT LIST ====================
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .testTag("manage_sessions_list"),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 6.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Configured Sessions (${uiState.sessions.size})",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            TextButton(
-                                onClick = {
-                                    currentId = 0L
-                                    title = ""
-                                    speaker = ""
-                                    speakerRole = ""
-                                    locationName = ""
-                                    locationAddress = ""
-                                    locationQuery = ""
-                                    description = ""
-                                    selectedTab = 0
-                                },
-                                modifier = Modifier.testTag("btn_new_session_from_tab")
-                            ) {
-                                Icon(
-                                    Icons.Default.Add,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("New")
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // JSON Export & Import Action Buttons
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = {
-                                    if (uiState.sessions.isEmpty()) {
-                                        Toast.makeText(
-                                            context,
-                                            "No sessions to export. Add sessions first.",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    } else {
-                                        exportDocumentLauncher.launch("conference_sessions.json")
-                                    }
-                                },
-                                shape = RoundedCornerShape(10.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("btn_export_json")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.FileDownload,
-                                    contentDescription = "Export JSON",
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Export JSON", maxLines = 1)
-                            }
-
-                            OutlinedButton(
-                                onClick = {
-                                    // Go straight to loading a file
-                                    jsonFilePickerLauncher.launch(
-                                        arrayOf(
-                                            "application/json",
-                                            "text/*",
-                                            "*/*"
-                                        )
-                                    )
-                                },
-                                shape = RoundedCornerShape(10.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("btn_import_json")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.FileDownload,
-                                    contentDescription = "Import JSON",
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Import JSON", maxLines = 1)
-                            }
-                        }
-                    }
-                }
-
-                items(uiState.sessions, key = { it.id }) { session ->
-                    val locationColor = PinColorHelper.parseColor(session.colorHex)
-
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .border(
-                                1.dp,
-                                locationColor.copy(alpha = 0.35f),
-                                RoundedCornerShape(14.dp)
-                            ),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(14.dp)
-                                        .clip(CircleShape)
-                                        .background(locationColor)
-                                )
-                                Column {
-                                    Text(
-                                        text = session.title,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = "${ConferenceViewModel.formatEuropeanDate(session.date)} • ${session.startTime} • ${session.locationName}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-
-                            Row {
-                                IconButton(
-                                    onClick = {
-                                        currentId = session.id
-                                        title = session.title
-                                        speaker = session.speaker
-                                        speakerRole = session.speakerRole
-                                        selectedDate = session.date
-                                        startTime = session.startTime
-                                        endTime = session.endTime
-                                        locationName = session.locationName
-                                        locationAddress = session.address
-                                        latitude = session.latitude
-                                        longitude = session.longitude
-                                        description = session.description
-                                        locationQuery = session.locationName
-                                        selectedTab = 0
-                                    }
-                                ) {
-                                    Icon(
-                                        Icons.Default.Edit,
-                                        contentDescription = "Edit",
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-
-                                IconButton(
-                                    onClick = { sessionToDelete = session }
-                                ) {
-                                    Icon(
-                                        Icons.Default.Delete,
-                                        contentDescription = "Delete",
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            ManageSessionsList(
+                sessions = uiState.sessions,
+                importExport = importExport,
+                onNew = {
+                    clearForm()
+                    selectedTab = 0
+                },
+                onEdit = { session ->
+                    loadSession(session)
+                    selectedTab = 0
+                },
+                onDelete = { sessionToDelete = it }
+            )
         }
     }
 
@@ -1097,7 +881,7 @@ fun ConfigureSessionScreen(
                                 val pickedDate = Instant.ofEpochMilli(selectedMillis)
                                     .atZone(ZoneOffset.UTC)
                                     .toLocalDate()
-                                pickedDate.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.UK))
+                                pickedDate.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.getDefault()))
                             } catch (_: Exception) {
                                 selectedDate
                             }
@@ -1137,68 +921,6 @@ fun ConfigureSessionScreen(
             dismissButton = {
                 TextButton(onClick = { sessionToDelete = null }) {
                     Text("Cancel")
-                }
-            }
-        )
-    }
-
-    // ==================== IMPORT SESSIONS OPTIONS DIALOG ====================
-    val importBatch = pendingImportSessions
-    if (importBatch != null) {
-        val count = importBatch.size
-        AlertDialog(
-            onDismissRequest = { pendingImportSessions = null },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.FileDownload,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            },
-            title = { Text("Import $count Sessions") },
-            text = {
-                Text(
-                    "Found $count sessions in the loaded file.\n\nYou currently have ${uiState.sessions.size} session(s) in your agenda. Would you like to add these to your existing agenda or replace everything?"
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.importSessions(importBatch, replaceAll = false) { importedCount ->
-                            Toast.makeText(
-                                context,
-                                "Added $importedCount sessions to agenda!",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            pendingImportSessions = null
-                        }
-                    }
-                ) {
-                    Text("Add to Agenda")
-                }
-            },
-            dismissButton = {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { pendingImportSessions = null }) {
-                        Text("Cancel")
-                    }
-                    TextButton(
-                        onClick = {
-                            viewModel.importSessions(
-                                importBatch,
-                                replaceAll = true
-                            ) { importedCount ->
-                                Toast.makeText(
-                                    context,
-                                    "Replaced agenda with $importedCount sessions!",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                                pendingImportSessions = null
-                            }
-                        }
-                    ) {
-                        Text("Replace All", color = MaterialTheme.colorScheme.error)
-                    }
                 }
             }
         )

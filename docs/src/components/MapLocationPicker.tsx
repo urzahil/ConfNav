@@ -33,11 +33,12 @@ export const MapLocationPicker: React.FC<MapLocationPickerProps> = ({
       const map = L.map(mapContainerRef.current, {
         center: [defaultLat, defaultLng],
         zoom: 14,
-        attributionControl: false,
+        attributionControl: true,
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors',
       }).addTo(map);
 
       const marker = L.marker([defaultLat, defaultLng], {

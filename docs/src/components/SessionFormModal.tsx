@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ConferenceSession, COLOR_PALETTE_PRESETS } from '../types';
 import { MapLocationPicker } from './MapLocationPicker';
-import { geocodeAddress } from '../utils/exportImport';
+import { geocodeAddress, GeocodeRateLimitError, NOMINATIM_ATTRIBUTION } from '../utils/geocode';
 import { 
   X, 
   MapPin, 
@@ -93,8 +93,11 @@ export const SessionFormModal: React.FC<SessionFormModalProps> = ({
       } else {
         setGeocodeMsg({ text: 'Address not found on OpenStreetMap. You can click on the map or type coordinates.', isError: true });
       }
-    } catch {
-      setGeocodeMsg({ text: 'Geocoding request failed. Please set coordinates manually.', isError: true });
+    } catch (err) {
+      setGeocodeMsg({
+        text: err instanceof GeocodeRateLimitError ? err.message : 'Geocoding request failed. Please set coordinates manually.',
+        isError: true,
+      });
     } finally {
       setIsGeocoding(false);
     }
@@ -240,6 +243,46 @@ export const SessionFormModal: React.FC<SessionFormModalProps> = ({
             </div>
           </div>
 
+          {/* Speaker role, track & description */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+                Speaker Role
+              </label>
+              <input
+                type="text"
+                value={formData.speakerRole ?? ''}
+                onChange={(e) => setFormData({ ...formData, speakerRole: e.target.value })}
+                placeholder="e.g. Staff Engineer"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 text-sm font-medium bg-slate-50/50 dark:bg-slate-800/60 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+                Track
+              </label>
+              <input
+                type="text"
+                value={formData.track ?? ''}
+                onChange={(e) => setFormData({ ...formData, track: e.target.value })}
+                placeholder="e.g. Keynote"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 text-sm font-medium bg-slate-50/50 dark:bg-slate-800/60 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+                Description
+              </label>
+              <textarea
+                value={formData.description ?? ''}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={3}
+                placeholder="What is this session about?"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 text-sm font-medium bg-slate-50/50 dark:bg-slate-800/60 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+          </div>
+
           {/* Date, Start Time, End Time */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
@@ -340,6 +383,10 @@ export const SessionFormModal: React.FC<SessionFormModalProps> = ({
                 </div>
               </div>
             </div>
+
+            <p className="mb-3 text-[11px] text-slate-400 dark:text-slate-500">
+              {NOMINATIM_ATTRIBUTION}
+            </p>
 
             {geocodeMsg && (
               <div

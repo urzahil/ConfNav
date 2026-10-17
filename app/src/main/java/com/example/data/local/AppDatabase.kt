@@ -6,7 +6,9 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.example.data.model.ConferenceSession
 
-@Database(entities = [ConferenceSession::class], version = 1, exportSchema = false)
+// exportSchema is on so every schema version is written to app/schemas (see build.gradle.kts).
+// Commit those files and add an explicit Migration whenever `version` changes.
+@Database(entities = [ConferenceSession::class], version = 1, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun conferenceDao(): ConferenceDao
 
@@ -16,16 +18,14 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
+                INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "conference_navigator_db"
                 )
                     // Do not silently destroy user data if a future schema migration is missing.
-                    // Add an explicit Migration whenever the Room schema version changes.
                     .build()
-                INSTANCE = instance
-                instance
+                    .also { INSTANCE = it }
             }
         }
     }

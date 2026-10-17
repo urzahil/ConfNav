@@ -21,4 +21,13 @@ data class ConferenceSession(
     val track: String = "",    // e.g. "Keynote", "AI & ML", "Architecture"
     val description: String = "",
     val isBookmarked: Boolean = true
-)
+) {
+    /**
+     * False when the session has no usable coordinates (0,0 is the "not set" value).
+     * Such sessions stay in the agenda but are left off the map and have no directions.
+     */
+    val hasLocation: Boolean
+        get() = latitude.isFinite() && longitude.isFinite() &&
+                latitude in -90.0..90.0 && longitude in -180.0..180.0 &&
+                !(latitude == 0.0 && longitude == 0.0)
+}
