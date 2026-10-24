@@ -9,11 +9,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example"
+    namespace = "rocks.urzahil.confnav"
     compileSdk { version = release(36) { minorApiLevel = 1 } }
 
     defaultConfig {
-        applicationId = "com.aistudio.confnav.xrqptz"
+        applicationId = "rocks.urzahil.confnav"
         minSdk = 24
         targetSdk = 36
         versionCode = 10
