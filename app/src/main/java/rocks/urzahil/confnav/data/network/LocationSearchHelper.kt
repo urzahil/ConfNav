@@ -19,20 +19,18 @@ class LocationSearchHelper(
 ) {
     companion object {
         private const val TAG = "LocationSearchHelper"
+
+        private val STARTS_WITH_DIGITS = Regex("^[0-9]+.*")
+        private val DIGITS_ONLY = Regex("^[0-9]+$")
+        private val HOUSE_NUMBER_ONLY = Regex("^[0-9]+[A-Za-z]?$")
+        /** "12 Main St", "12A Main St", "12, Main St": a house number followed by the street. */
+        private val HOUSE_NUMBER_THEN_STREET = Regex("^[0-9]+[A-Za-z]?,? .*")
     }
 
-    private fun getApiKey(): String {
-        return try {
-            val key = BuildConfig.MAPS_API_KEY
-            if (key.isNotBlank() && !key.contains("YOUR_GOOGLE_MAPS_API_KEY") && !key.contains("MY_")) {
-                key
-            } else {
-                ""
-            }
-        } catch (_: Exception) {
-            ""
-        }
-    }
+    /** Empty when no real key was configured (the `.env.example` placeholder counts as none). */
+    private val apiKey: String = BuildConfig.MAPS_API_KEY
+        .takeIf { it.isNotBlank() && !it.contains("YOUR_GOOGLE_MAPS_API_KEY") }
+        .orEmpty()
 
     suspend fun searchSuggestions(query: String): List<LocationSuggestion> =
         withContext(Dispatchers.IO) {
@@ -42,7 +40,6 @@ class LocationSearchHelper(
             }
 
             val results = mutableListOf<LocationSuggestion>()
-            val apiKey = getApiKey()
 
             // 1. Google Places Autocomplete API
             if (apiKey.isNotEmpty()) {
@@ -56,15 +53,11 @@ class LocationSearchHelper(
 
                             // Determine descriptive venue/location name
                             val isMainTextPureStreetAddress = !mainText.isNullOrBlank() &&
-                                    (mainText.matches(Regex("^[0-9]+ .*")) || mainText.matches(
-                                        Regex(
-                                            "^[0-9]+[A-Za-z]?,? .*"
-                                        )
-                                    ))
+                                    mainText.matches(HOUSE_NUMBER_THEN_STREET)
 
                             val descriptiveName = when {
                                 !mainText.isNullOrBlank() && !isMainTextPureStreetAddress -> mainText.trim()
-                                !cleanQuery.matches(Regex("^[0-9]+.*")) -> {
+                                !cleanQuery.matches(STARTS_WITH_DIGITS) -> {
                                     cleanQuery.split(",").first().trim().replaceFirstChar {
                                         if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString()
                                     }
@@ -74,20 +67,14 @@ class LocationSearchHelper(
                                 else -> fullAddress.split(",").firstOrNull()?.trim() ?: cleanQuery
                             }
 
-                            val placeId = pred.placeId
-
-                            // Autocomplete predictions already provide the place_id.
-                            // Resolve coordinates only after the user selects a prediction.
-                            val lat = 0.0
-                            val lng = 0.0
-
+                            // Coordinates are resolved from the place_id only once the user picks it.
                             results.add(
                                 LocationSuggestion(
                                     name = descriptiveName,
                                     address = if (secondaryText.isNotBlank()) secondaryText else fullAddress,
-                                    latitude = lat,
-                                    longitude = lng,
-                                    placeId = placeId
+                                    latitude = 0.0,
+                                    longitude = 0.0,
+                                    placeId = pred.placeId
                                 )
                             )
                         }
@@ -144,14 +131,14 @@ class LocationSearchHelper(
         fullAddress: String
     ): String {
         // 1. If premises is a named venue (e.g. "Moscone Center South", "Building 4")
-        if (!premises.isNullOrBlank() && !premises.matches(Regex("^[0-9]+.*"))) {
+        if (!premises.isNullOrBlank() && !premises.matches(STARTS_WITH_DIGITS)) {
             return premises.trim()
         }
 
         // 2. If featureName is a named venue/building/POI
         if (!featureName.isNullOrBlank()) {
             val trimmed = featureName.trim()
-            val isJustNumber = trimmed.matches(Regex("^[0-9]+[A-Za-z]?$"))
+            val isJustNumber = trimmed.matches(HOUSE_NUMBER_ONLY)
             val isStreetName =
                 thoroughfare != null && trimmed.equals(thoroughfare.trim(), ignoreCase = true)
             // If it's not just a house number and not just the street name, it's a POI / venue name!
@@ -163,17 +150,14 @@ class LocationSearchHelper(
         // 3. If user searched for a descriptive place (e.g. "Moscone Center", "Main Auditorium", "Ballroom A"),
         // use their descriptive search term as the venue name so it doesn't get replaced with raw house numbers/street address
         val clean = query.trim()
-        if (clean.isNotBlank() && !clean.matches(Regex("^[0-9]+[A-Za-z]?,? .*")) && !clean.matches(
-                Regex("^[0-9]+$")
-            )
-        ) {
+        if (clean.isNotBlank() && !clean.matches(HOUSE_NUMBER_THEN_STREET) && !clean.matches(DIGITS_ONLY)) {
             return clean.split(",").first().trim()
                 .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString() }
         }
 
         // 4. If fullAddress starts with a place name before commas
         val firstSegment = fullAddress.split(",").firstOrNull()?.trim().orEmpty()
-        if (firstSegment.isNotBlank() && !firstSegment.matches(Regex("^[0-9]+.*"))) {
+        if (firstSegment.isNotBlank() && !firstSegment.matches(STARTS_WITH_DIGITS)) {
             return firstSegment
         }
 
@@ -182,7 +166,6 @@ class LocationSearchHelper(
 
     suspend fun resolvePlaceIdCoordinates(placeId: String): Pair<Double, Double>? =
         withContext(Dispatchers.IO) {
-            val apiKey = getApiKey()
             if (apiKey.isBlank()) return@withContext null
 
             try {
@@ -195,36 +178,6 @@ class LocationSearchHelper(
                 throw e
             } catch (e: Exception) {
                 Log.w(TAG, "Error resolving selected place coordinates", e)
-            }
-
-            null
-        }
-
-    suspend fun geocodeAddressString(address: String): Pair<Double, Double>? =
-        withContext(Dispatchers.IO) {
-            val apiKey = getApiKey()
-            if (apiKey.isNotEmpty()) {
-                try {
-                    val res = service.geocodeAddress(address = address, apiKey = apiKey)
-                    val loc = res.results.firstOrNull()?.geometry?.location
-                    if (loc != null) {
-                        return@withContext Pair(loc.lat, loc.lng)
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Google Geocoding failed", e)
-                }
-            }
-
-            // System Geocoder fallback
-            try {
-                val addresses = geocodeWithSystemGeocoder(address)
-                val first = addresses.firstOrNull()
-                if (first != null) {
-                    return@withContext Pair(first.latitude, first.longitude)
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
             }
 
             null

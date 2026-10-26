@@ -39,14 +39,14 @@ import rocks.urzahil.confnav.ui.ConferenceViewModel
 import rocks.urzahil.confnav.ui.manage.ConfigureSessionScreen
 import rocks.urzahil.confnav.ui.map.ConferenceMapScreen
 import rocks.urzahil.confnav.ui.schedule.ScheduleScreen
-import rocks.urzahil.confnav.ui.theme.MyApplicationTheme
+import rocks.urzahil.confnav.ui.theme.ConfNavTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MyApplicationTheme {
+            ConfNavTheme {
                 ConferenceApp()
             }
         }

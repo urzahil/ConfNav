@@ -99,7 +99,7 @@ object SessionJsonHelper {
      * Rows that fail validation are skipped and reported rather than silently altered.
      */
     fun parse(jsonString: String): Result<ImportReport> {
-        val text = jsonString.removePrefix("﻿").trim()
+        val text = jsonString.removePrefix("\uFEFF").trim()
         if (text.isEmpty()) {
             return Result.failure(IllegalArgumentException("JSON content is empty"))
         }
@@ -184,8 +184,8 @@ object SessionJsonHelper {
                 endTime = end.format(OUTPUT_TIME_FORMAT),
                 locationName = locationName.ifEmpty { "Venue" },
                 address = obj.text("address"),
-                latitude = if (validCoords) lat!! else 0.0,
-                longitude = if (validCoords) lng!! else 0.0,
+                latitude = if (validCoords) lat else 0.0,
+                longitude = if (validCoords) lng else 0.0,
                 colorHex = normalizeColor(obj.text("colorHex")),
                 track = obj.text("track"),
                 description = obj.text("description")

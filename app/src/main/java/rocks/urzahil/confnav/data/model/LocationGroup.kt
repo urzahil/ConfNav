@@ -10,11 +10,4 @@ data class LocationGroup(
     val sessions: List<ConferenceSession>
 ) {
     val sessionCount: Int get() = sessions.size
-
-    val subtitle: String
-        get() = if (sessionCount == 1) {
-            "1 session: ${sessions.first().title}"
-        } else {
-            "$sessionCount sessions scheduled here"
-        }
 }

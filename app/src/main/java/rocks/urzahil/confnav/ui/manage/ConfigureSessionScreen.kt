@@ -1,10 +1,8 @@
 package rocks.urzahil.confnav.ui.manage
 
-import android.net.Uri
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,7 +30,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
@@ -71,7 +68,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -104,9 +100,8 @@ fun ConfigureSessionScreen(
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
-    val clipboardManager = LocalClipboardManager.current
 
-    var selectedTab by remember { mutableIntStateOf(if (editingSessionId != null) 0 else 0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
 
     // Form fields state
     var currentId by remember { mutableStateOf(editingSessionId ?: 0L) }
@@ -497,7 +492,7 @@ fun ConfigureSessionScreen(
                                 shape = RoundedCornerShape(12.dp),
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 tonalElevation = 4.dp,
-                                border = androidx.compose.foundation.BorderStroke(
+                                border = BorderStroke(
                                     1.dp,
                                     MaterialTheme.colorScheme.outlineVariant
                                 )
@@ -763,10 +758,7 @@ fun ConfigureSessionScreen(
                                     address = locationAddress.trim(),
                                     latitude = latitude,
                                     longitude = longitude,
-                                    colorHex = viewModel.getOrAssignVenueColor(
-                                        locationName.trim(),
-                                        currentId
-                                    ),
+                                    colorHex = "", // assigned by saveSession from the venue
                                     track = track,
                                     description = description.trim(),
                                     isBookmarked = isBookmarked
