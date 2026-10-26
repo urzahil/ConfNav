@@ -20,6 +20,7 @@ robolectric = "4.16.1"
 secretsGradlePlugin = "2.0.1"
 mapsCompose = "6.1.2"
 playServicesMaps = "19.0.0"
+desugarJdkLibs = "2.1.5"
 
 
 [libraries]
@@ -52,6 +53,7 @@ moshi-kotlin-codegen = { group = "com.squareup.moshi", name = "moshi-kotlin-code
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
 play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
+desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugarJdkLibs" }
 
 
 [plugins]
