@@ -128,7 +128,7 @@ export default function App() {
     showToast(`Duplicated "${session.title}"`);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: string, onDeleted?: () => void) => {
     const sessionToDelete = sessions.find((s) => s.id === id);
     if (!sessionToDelete) return;
 
@@ -154,6 +154,7 @@ export default function App() {
       onConfirm: () => {
         setSessions((prev) => prev.filter((s) => s.id !== id));
         showToast(`Deleted "${sessionToDelete.title}"`);
+        onDeleted?.();
       },
     });
   };
@@ -563,6 +564,12 @@ export default function App() {
           setEditingSession(null);
         }}
         onSave={handleSaveSession}
+        onDelete={(id) =>
+          handleDelete(id, () => {
+            setIsFormOpen(false);
+            setEditingSession(null);
+          })
+        }
         initialSession={editingSession}
       />
 

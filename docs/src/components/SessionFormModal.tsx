@@ -13,13 +13,15 @@ import {
   Check, 
   AlertCircle,
   Palette,
-  Eye
+  Eye,
+  Trash2
 } from 'lucide-react';
 
 interface SessionFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (session: ConferenceSession) => void;
+  onDelete?: (id: string) => void;
   initialSession?: ConferenceSession | null;
 }
 
@@ -27,6 +29,7 @@ export const SessionFormModal: React.FC<SessionFormModalProps> = ({
   isOpen,
   onClose,
   onSave,
+  onDelete,
   initialSession,
 }) => {
   const [formData, setFormData] = useState<ConferenceSession>({
@@ -634,6 +637,16 @@ export const SessionFormModal: React.FC<SessionFormModalProps> = ({
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-end gap-3">
+          {initialSession && onDelete && (
+            <button
+              type="button"
+              onClick={() => onDelete(initialSession.id)}
+              className="mr-auto px-4 py-2.5 rounded-xl border border-rose-200 dark:border-rose-900/50 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition flex items-center gap-1.5"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
