@@ -51,4 +51,30 @@ class AgendaLogicTest {
         val b = a.copy(id = 9, title = " s1 ", locationName = "main hall ")
         assertEquals(AgendaLogic.duplicateKey(a), AgendaLogic.duplicateKey(b))
     }
+
+    @Test
+    fun `calendar layout puts overlapping sessions in separate columns and reuses freed ones`() {
+        val long = session(1, "2026-10-05", "13:00", "17:00")
+        val first = session(2, "2026-10-05", "13:00", "14:00")
+        val next = session(3, "2026-10-05", "14:00", "15:30")
+        val overlap = session(4, "2026-10-05", "15:15", "16:15")
+        val evening = session(5, "2026-10-05", "20:00", "21:00")
+
+        val columns = AgendaLogic.layoutCalendarDay(listOf(evening, overlap, next, first, long))
+            .associate { it.session.id to it.column }
+
+        assertEquals(mapOf(1L to 0, 2L to 1, 3L to 1, 4L to 2, 5L to 0), columns)
+    }
+
+    @Test
+    fun `calendar layout stretches short sessions and skips unreadable times`() {
+        val short = session(1, "2026-10-05", "14:00", "14:00")
+        val broken = session(2, "2026-10-05", "later", "15:00")
+
+        val slots = AgendaLogic.layoutCalendarDay(listOf(short, broken), minDurationMinutes = 30)
+
+        assertEquals(1, slots.size)
+        assertEquals(14 * 60, slots[0].startMinute)
+        assertEquals(14 * 60 + 30, slots[0].endMinute)
+    }
 }

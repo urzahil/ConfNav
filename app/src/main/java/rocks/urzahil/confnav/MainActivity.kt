@@ -12,7 +12,10 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -29,6 +32,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import rocks.urzahil.confnav.data.model.ConferenceSession
 import rocks.urzahil.confnav.ui.ConferenceViewModel
 import rocks.urzahil.confnav.ui.icons.filled.CalendarMonth
 import rocks.urzahil.confnav.ui.icons.filled.EditCalendar
@@ -38,6 +42,7 @@ import rocks.urzahil.confnav.ui.icons.outlined.EditCalendar
 import rocks.urzahil.confnav.ui.icons.outlined.Map
 import rocks.urzahil.confnav.ui.manage.ConfigureSessionScreen
 import rocks.urzahil.confnav.ui.map.ConferenceMapScreen
+import rocks.urzahil.confnav.ui.schedule.CalendarDayScreen
 import rocks.urzahil.confnav.ui.schedule.ScheduleScreen
 import rocks.urzahil.confnav.ui.theme.ConfNavTheme
 
@@ -55,6 +60,7 @@ class MainActivity : ComponentActivity() {
 
 enum class NavigationTab(val title: String) {
     AGENDA("Agenda"),
+    CALENDAR("Calendar"),
     MAP("Map"),
     CONFIGURE("Configure");
 }
@@ -67,6 +73,25 @@ fun ConferenceApp(
     var editingSessionId by remember { mutableStateOf<Long?>(null) }
     var editOriginTab by remember { mutableStateOf(NavigationTab.CONFIGURE) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    // Kept out here so the Agenda and Calendar keep their scroll position while a session is
+    // being edited; they only jump to the current day/time when opened from the navigation bar.
+    val agendaListState = rememberLazyListState()
+    var agendaScrollToNow by remember { mutableStateOf(true) }
+    val calendarListState = rememberLazyListState()
+    var calendarScrollToNow by remember { mutableStateOf(true) }
+
+    // Opens the Map tab, with the session's venue pin selected when a session is given.
+    val navigateToMap: (ConferenceSession?) -> Unit = { session ->
+        if (session != null) {
+            val targetGroup = uiState.locationGroups.firstOrNull { group ->
+                group.sessions.any { it.id == session.id }
+            }
+            if (targetGroup != null) {
+                viewModel.selectLocationPin(targetGroup)
+            }
+        }
+        selectedTab = NavigationTab.MAP
+    }
 
     // Back handling: pop back to Agenda screen if on sub-screens
     BackHandler(enabled = selectedTab != NavigationTab.AGENDA || uiState.selectedLocationPin != null) {
@@ -90,7 +115,10 @@ fun ConferenceApp(
                 // Tab 1: Agenda / Calendar
                 NavigationBarItem(
                     selected = selectedTab == NavigationTab.AGENDA,
-                    onClick = { selectedTab = NavigationTab.AGENDA },
+                    onClick = {
+                        if (selectedTab != NavigationTab.AGENDA) agendaScrollToNow = true
+                        selectedTab = NavigationTab.AGENDA
+                    },
                     icon = {
                         Icon(
                             imageVector = if (selectedTab == NavigationTab.AGENDA) Icons.Filled.CalendarMonth else Icons.Outlined.CalendarMonth,
@@ -106,7 +134,29 @@ fun ConferenceApp(
                     modifier = Modifier.testTag("nav_tab_schedule")
                 )
 
-                // Tab 2: Map
+                // Tab 2: Calendar day grid
+                NavigationBarItem(
+                    selected = selectedTab == NavigationTab.CALENDAR,
+                    onClick = {
+                        if (selectedTab != NavigationTab.CALENDAR) calendarScrollToNow = true
+                        selectedTab = NavigationTab.CALENDAR
+                    },
+                    icon = {
+                        Icon(
+                            imageVector = if (selectedTab == NavigationTab.CALENDAR) Icons.Filled.DateRange else Icons.Outlined.DateRange,
+                            contentDescription = "Calendar"
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = NavigationTab.CALENDAR.title,
+                            fontWeight = if (selectedTab == NavigationTab.CALENDAR) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
+                    modifier = Modifier.testTag("nav_tab_calendar")
+                )
+
+                // Tab 3: Map
                 NavigationBarItem(
                     selected = selectedTab == NavigationTab.MAP,
                     onClick = { selectedTab = NavigationTab.MAP },
@@ -125,7 +175,7 @@ fun ConferenceApp(
                     modifier = Modifier.testTag("nav_tab_map")
                 )
 
-                // Tab 3: Configure / Manage
+                // Tab 4: Configure / Manage
                 NavigationBarItem(
                     selected = selectedTab == NavigationTab.CONFIGURE,
                     onClick = {
@@ -161,19 +211,27 @@ fun ConferenceApp(
                 NavigationTab.AGENDA -> {
                     ScheduleScreen(
                         viewModel = viewModel,
-                        onNavigateToMap = { session ->
-                            if (session != null) {
-                                val targetGroup = uiState.locationGroups.firstOrNull { group ->
-                                    group.sessions.any { it.id == session.id }
-                                }
-                                if (targetGroup != null) {
-                                    viewModel.selectLocationPin(targetGroup)
-                                }
-                            }
-                            selectedTab = NavigationTab.MAP
-                        },
+                        listState = agendaListState,
+                        scrollToNow = agendaScrollToNow,
+                        onScrollToNowChange = { agendaScrollToNow = it },
+                        onNavigateToMap = navigateToMap,
                         onNavigateToConfigure = { sessionId ->
                             editOriginTab = NavigationTab.AGENDA
+                            editingSessionId = sessionId
+                            selectedTab = NavigationTab.CONFIGURE
+                        }
+                    )
+                }
+
+                NavigationTab.CALENDAR -> {
+                    CalendarDayScreen(
+                        viewModel = viewModel,
+                        listState = calendarListState,
+                        scrollToNow = calendarScrollToNow,
+                        onScrollToNowChange = { calendarScrollToNow = it },
+                        onNavigateToMap = navigateToMap,
+                        onNavigateToConfigure = { sessionId ->
+                            editOriginTab = NavigationTab.CALENDAR
                             editingSessionId = sessionId
                             selectedTab = NavigationTab.CONFIGURE
                         }

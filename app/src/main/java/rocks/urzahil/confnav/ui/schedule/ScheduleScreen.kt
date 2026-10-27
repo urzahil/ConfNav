@@ -18,14 +18,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -48,19 +47,24 @@ fun ScheduleScreen(
     viewModel: ConferenceViewModel,
     onNavigateToMap: (ConferenceSession?) -> Unit,
     onNavigateToConfigure: (Long?) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
+    scrollToNow: Boolean = true,
+    onScrollToNowChange: (Boolean) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val listState = rememberLazyListState()
     val lifecycleOwner = LocalLifecycleOwner.current
-    var triggerScrollCount by remember { mutableIntStateOf(0) }
 
-    // Trigger scroll position check when app returns to foreground (ON_RESUME)
+    // Scroll back to today when the app returns to the foreground. The observer is also sent
+    // the current ON_RESUME as soon as it is added; that one is skipped so coming back from
+    // editing a session keeps the list where it was.
     DisposableEffect(lifecycleOwner) {
+        var initialResumeSeen = false
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                triggerScrollCount++
+                if (initialResumeSeen) onScrollToNowChange(true)
+                initialResumeSeen = true
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -71,12 +75,15 @@ fun ScheduleScreen(
 
     val groupedByDate = remember(uiState.filteredSessions) { uiState.filteredSessions.groupBy { it.date } }
 
-    // Auto-scroll to current day (or top of list if current day is out of range)
-    LaunchedEffect(uiState.selectedFilter, groupedByDate, triggerScrollCount) {
-        if (uiState.selectedFilter is DayFilter.All && groupedByDate.isNotEmpty()) {
-            val targetIndex = calculateTargetIndex(groupedByDate)
-            listState.scrollToItem(targetIndex)
+    // Auto-scroll to current day (or top of list if current day is out of range) when asked to:
+    // on opening from the navigation bar, on returning to the foreground, or on picking a filter.
+    LaunchedEffect(scrollToNow, uiState.selectedFilter, groupedByDate.isNotEmpty()) {
+        if (!scrollToNow || groupedByDate.isEmpty()) return@LaunchedEffect
+        if (uiState.selectedFilter is DayFilter.All) {
+            listState.scrollToItem(calculateTargetIndex(groupedByDate))
         }
+        // Only after scrolling: this changes the effect's key, which would cancel it.
+        onScrollToNowChange(false)
     }
 
     Box(
@@ -98,7 +105,10 @@ fun ScheduleScreen(
                 DayFilterChipsRow(
                     filters = uiState.availableFilters,
                     selectedFilter = uiState.selectedFilter,
-                    onFilterSelected = { viewModel.setDayFilter(it) }
+                    onFilterSelected = {
+                        viewModel.setDayFilter(it)
+                        onScrollToNowChange(true)
+                    }
                 )
 
                 // Next Event Pill
