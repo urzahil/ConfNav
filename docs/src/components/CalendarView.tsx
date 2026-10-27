@@ -155,7 +155,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ sessions, onEdit }) 
           {positioned.map(({ session, start, end, column }) => {
             const top = ((start - firstHour * 60) / 60) * HOUR_HEIGHT;
             const height = Math.max(((end - start) / 60) * HOUR_HEIGHT - 2, 20);
-            const left = Math.min(column * INDENT_PERCENT, 100 - INDENT_PERCENT * 2);
+            // Starred sessions always take the full width; the others cascade underneath them.
+            const left = session.starred ? 0 : Math.min(column * INDENT_PERCENT, 100 - INDENT_PERCENT * 2);
             const compact = height < 44;
             return (
               <button
