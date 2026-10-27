@@ -125,9 +125,8 @@ fun ConfigureSessionScreen(
     // Dialog state for delete confirmation
     var sessionToDelete by remember { mutableStateOf<ConferenceSession?>(null) }
 
-    // Fields the form does not show but must keep when a session is edited
+    // Field the form does not show but must keep when a session is edited
     var track by remember { mutableStateOf("") }
-    var isBookmarked by remember { mutableStateOf(true) }
 
     fun clearForm() {
         currentId = 0L
@@ -143,7 +142,6 @@ fun ConfigureSessionScreen(
         longitude = 0.0
         description = ""
         track = ""
-        isBookmarked = true
     }
 
     fun loadSession(session: ConferenceSession) {
@@ -161,7 +159,6 @@ fun ConfigureSessionScreen(
         description = session.description
         locationQuery = session.locationName
         track = session.track
-        isBookmarked = session.isBookmarked
     }
 
     // JSON export / import (file pickers, add-or-replace dialog and result messages)
@@ -758,8 +755,7 @@ fun ConfigureSessionScreen(
                                     longitude = longitude,
                                     colorHex = "", // assigned by saveSession from the venue
                                     track = track,
-                                    description = description.trim(),
-                                    isBookmarked = isBookmarked
+                                    description = description.trim()
                                 )
 
                                 val wasEdit = currentId != 0L
