@@ -20,9 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Directions
-import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material3.Card
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +43,7 @@ import rocks.urzahil.confnav.ui.ConferenceViewModel
 import rocks.urzahil.confnav.ui.components.NextEventPill
 import rocks.urzahil.confnav.ui.components.PinMarkerCanvas
 import rocks.urzahil.confnav.ui.components.openDirections
+import rocks.urzahil.confnav.ui.icons.filled.MyLocation
 import rocks.urzahil.confnav.ui.schedule.DayFilterChipsRow
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
