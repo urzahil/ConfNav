@@ -1,0 +1,38 @@
+name: Build CICAP Fest converter (Windows exe)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyInstaller
+        run: python -m pip install pyinstaller==6.11.1
+
+      - name: Build exe
+        run: pyinstaller --onefile --console --name cicapfest_to_confnav scripts/cicapfest_to_confnav.py
+
+      - name: Smoke test
+        run: dist/cicapfest_to_confnav.exe --help
+
+      - name: Upload exe artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: cicapfest_to_confnav-windows-${{ github.run_number }}
+          path: dist/cicapfest_to_confnav.exe
+          if-no-files-found: error
+          retention-days: 30
