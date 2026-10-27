@@ -717,7 +717,7 @@ fun ConfigureSessionScreen(
                                     .testTag("btn_delete_session"),
                                 shape = RoundedCornerShape(14.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.error,
+                                    containerColor = Color(0xFFFF1A1A),
                                     contentColor = Color.Black
                                 )
                             ) {
