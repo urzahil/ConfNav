@@ -13,6 +13,7 @@ import { LoadSessionsModal } from './components/LoadSessionsModal';
 import { JsonViewerModal } from './components/JsonViewerModal';
 import { MapView } from './components/MapView';
 import { TimelineAgendaView } from './components/TimelineAgendaView';
+import { CalendarView } from './components/CalendarView';
 import { ConfirmDialogModal } from './components/ConfirmDialogModal';
 import {
   Calendar,
@@ -34,7 +35,7 @@ export default function App() {
   const [sessions, setSessions] = useState<ConferenceSession[]>(() => loadSavedSessions());
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>('all');
-  const [activeView, setActiveView] = useState<'grid' | 'timeline' | 'map'>('grid');
+  const [activeView, setActiveView] = useState<'grid' | 'timeline' | 'calendar' | 'map'>('grid');
 
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
@@ -421,6 +422,17 @@ export default function App() {
                 Agenda
               </button>
               <button
+                onClick={() => setActiveView('calendar')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
+                  activeView === 'calendar'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                <CalendarDays className="w-3.5 h-3.5" />
+                Calendar
+              </button>
+              <button
                 onClick={() => setActiveView('map')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
                   activeView === 'map'
@@ -522,6 +534,11 @@ export default function App() {
                 onDelete={handleDelete}
                 onDuplicate={handleDuplicate}
               />
+            )}
+
+            {/* View: Calendar day grid with overlapping sessions */}
+            {activeView === 'calendar' && (
+              <CalendarView sessions={filteredSessions} onEdit={handleEdit} />
             )}
 
             {/* View 3: Full Interactive Map */}
