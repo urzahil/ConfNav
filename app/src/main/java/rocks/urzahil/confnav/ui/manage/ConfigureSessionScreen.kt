@@ -813,7 +813,7 @@ fun ConfigureSessionScreen(
                             Icon(Icons.Default.Check, contentDescription = null)
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (currentId != 0L) "Update" else "Save Session",
+                                text = "Save",
                                 fontWeight = FontWeight.Bold
                             )
                         }
