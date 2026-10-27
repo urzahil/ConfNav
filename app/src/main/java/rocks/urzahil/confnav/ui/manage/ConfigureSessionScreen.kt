@@ -696,7 +696,7 @@ fun ConfigureSessionScreen(
                                 Text("Cancel")
                             }
 
-                            OutlinedButton(
+                            Button(
                                 onClick = {
                                     sessionToDelete = ConferenceSession(
                                         id = currentId,
@@ -716,8 +716,9 @@ fun ConfigureSessionScreen(
                                     .weight(1f)
                                     .testTag("btn_delete_session"),
                                 shape = RoundedCornerShape(14.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFFF1A1A),
+                                    contentColor = Color.Black
                                 )
                             ) {
                                 Text("Delete")
