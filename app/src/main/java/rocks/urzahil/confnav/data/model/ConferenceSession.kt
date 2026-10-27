@@ -1,5 +1,6 @@
 package rocks.urzahil.confnav.data.model
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -19,7 +20,9 @@ data class ConferenceSession(
     val longitude: Double,
     val colorHex: String,      // Color hex code (e.g. #4F46E5) matching the map pin
     val track: String = "",    // e.g. "Keynote", "AI & ML", "Architecture"
-    val description: String = ""
+    val description: String = "",
+    @ColumnInfo(defaultValue = "0")
+    val starred: Boolean = false   // Highlighted with a gold star and drawn on top in the calendar
 ) {
     /**
      * False when the session has no usable coordinates (0,0 is the "not set" value).

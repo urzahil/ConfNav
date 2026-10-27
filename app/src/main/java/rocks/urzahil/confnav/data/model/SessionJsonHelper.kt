@@ -76,6 +76,7 @@ object SessionJsonHelper {
             if (session.colorHex.isNotBlank()) obj["colorHex"] = session.colorHex
             if (session.track.isNotBlank()) obj["track"] = session.track
             if (session.description.isNotBlank()) obj["description"] = session.description
+            if (session.starred) obj["starred"] = true
             obj
         }
         return anyAdapter.indent("  ").toJson(list)
@@ -188,7 +189,8 @@ object SessionJsonHelper {
                 longitude = if (validCoords) lng else 0.0,
                 colorHex = normalizeColor(obj.text("colorHex")),
                 track = obj.text("track"),
-                description = obj.text("description")
+                description = obj.text("description"),
+                starred = obj.flag("starred")
             )
         )
     }
@@ -199,6 +201,14 @@ object SessionJsonHelper {
             is String -> v.trim()
             is Number, is Boolean -> v.toString()
             else -> ""
+        }
+
+    /** Reads a boolean, accepting `"true"` as well. Absent or anything else is false. */
+    private fun Map<*, *>.flag(key: String): Boolean =
+        when (val v = this[key]) {
+            is Boolean -> v
+            is String -> v.trim().equals("true", ignoreCase = true)
+            else -> false
         }
 
     /** Reads a finite number, accepting numeric strings. Returns null if absent or invalid. */

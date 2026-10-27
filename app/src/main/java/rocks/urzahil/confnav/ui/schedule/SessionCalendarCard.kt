@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -36,6 +37,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import rocks.urzahil.confnav.data.model.ConferenceSession
 import rocks.urzahil.confnav.ui.components.PinColorHelper
+import rocks.urzahil.confnav.ui.components.SessionTitleText
+import rocks.urzahil.confnav.ui.components.StarGold
+import rocks.urzahil.confnav.ui.icons.filled.StarBorder
 import rocks.urzahil.confnav.ui.icons.filled.Directions
 import rocks.urzahil.confnav.ui.icons.filled.Map
 
@@ -45,6 +49,7 @@ fun SessionCalendarCard(
     onOpenDirections: () -> Unit,
     onViewOnMap: () -> Unit,
     onEdit: () -> Unit,
+    onToggleStar: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val locationColor = PinColorHelper.parseColor(session.colorHex)
@@ -154,8 +159,8 @@ fun SessionCalendarCard(
                     Spacer(modifier = Modifier.height(3.dp))
 
                     // Title
-                    Text(
-                        text = session.title,
+                    SessionTitleText(
+                        session = session,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -248,19 +253,35 @@ fun SessionCalendarCard(
                             }
                         }
 
-                        // Edit Button
-                        IconButton(
-                            onClick = onEdit,
-                            modifier = Modifier
-                                .size(28.dp)
-                                .testTag("edit_session_${session.id}")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit Session",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(14.dp)
-                            )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                onClick = onToggleStar,
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .testTag("star_session_${session.id}")
+                            ) {
+                                Icon(
+                                    imageVector = if (session.starred) Icons.Default.Star else Icons.Default.StarBorder,
+                                    contentDescription = if (session.starred) "Unstar Session" else "Star Session",
+                                    tint = if (session.starred) StarGold else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+
+                            // Edit Button
+                            IconButton(
+                                onClick = onEdit,
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .testTag("edit_session_${session.id}")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit Session",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
                         }
                     }
                 }

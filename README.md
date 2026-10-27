@@ -7,14 +7,14 @@ Agendas are built in the companion **web builder** ([urzahil.github.io/ConfNav](
 ## Features
 
 ### Android app
-- **Agenda**: filter sessions by day. A "next event" pill jumps straight to directions for the upcoming session.
+- **Agenda**: filter sessions by day. Star the sessions you don't want to miss: they get a gold star next to their title and are drawn on top of overlapping sessions in the Calendar. A "next event" pill jumps straight to directions for the upcoming session.
 - **Map**: colour-coded pins, with sessions grouped by location.
 - **Editing**: add, edit and delete sessions inside the app.
 - **Import / export**: load a JSON agenda either by merging it into your existing one or by replacing it. Re-importing the same file never creates duplicate sessions.
 - **Offline storage**: everything lives on the device, so your agenda works without a connection.
 
 ### Web builder
-- Create and edit sessions with title, speaker, time, venue and colour.
+- Create and edit sessions with title, speaker, time, venue and colour, and star the ones that matter most.
 - Look up venue addresses and place them on a map.
 - Export the agenda as JSON for the app to import.
 
@@ -37,6 +37,7 @@ Each exported session is an object with these fields:
 | `colorHex` | string | yes | `#RRGGBB` |
 | `track` | string | no | e.g. "Keynote" |
 | `description` | string | no | |
+| `starred` | boolean | no | `true` marks the session with a gold star; omitted when not starred |
 
 Custom keys are allowed and are preserved when a file is re-imported and exported.
 

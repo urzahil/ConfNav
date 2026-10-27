@@ -22,13 +22,24 @@ class SessionJsonHelperTest {
             date = "2026-10-06", startTime = "09:30", endTime = "10:30",
             locationName = "Moscone", address = "747 Howard St",
             latitude = 37.783, longitude = -122.401, colorHex = "#4F46E5",
-            track = "AI & ML", description = "Quantization deep dive"
+            track = "AI & ML", description = "Quantization deep dive", starred = true
         )
         val json = SessionJsonHelper.exportToJson(listOf(original))
         val imported = SessionJsonHelper.importFromJson(json).getOrThrow().single()
 
         assertEquals(original.copy(id = 0L), imported)
         assertTrue(json.contains("\"track\""))
+        assertTrue(json.contains("\"starred\": true"))
+    }
+
+    @Test
+    fun `starred is only exported when set and defaults to false on import`() {
+        val json = SessionJsonHelper.exportToJson(listOf(SessionJsonHelper.importFromJson("[" + row() + "]").getOrThrow().single()))
+        assertFalse(json.contains("starred"))
+
+        val rows = "[" + listOf(row(), row(""", "starred": true"""), row(""", "starred": "true""""), row(""", "starred": 1""")).joinToString(",") + "]"
+        val starred = SessionJsonHelper.importFromJson(rows).getOrThrow().map { it.starred }
+        assertEquals(listOf(false, true, true, false), starred)
     }
 
     @Test

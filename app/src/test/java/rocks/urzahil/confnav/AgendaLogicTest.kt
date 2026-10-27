@@ -67,6 +67,19 @@ class AgendaLogicTest {
     }
 
     @Test
+    fun `starred sessions are placed past every session they overlap`() {
+        val workshop = session(1, "2026-10-05", "09:00", "12:00")
+        val starred = session(2, "2026-10-05", "10:00", "11:00").copy(starred = true)
+        val parallel = session(3, "2026-10-05", "10:30", "11:30")
+        val later = session(4, "2026-10-05", "13:00", "14:00").copy(starred = true)
+
+        val columns = AgendaLogic.layoutCalendarDay(listOf(workshop, starred, parallel, later))
+            .associate { it.session.id to it.column }
+
+        assertEquals(mapOf(1L to 0, 2L to 2, 3L to 1, 4L to 0), columns)
+    }
+
+    @Test
     fun `calendar layout stretches short sessions and skips unreadable times`() {
         val short = session(1, "2026-10-05", "14:00", "14:00")
         val broken = session(2, "2026-10-05", "later", "15:00")

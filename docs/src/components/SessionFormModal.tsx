@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ConferenceSession, COLOR_PALETTE_PRESETS } from '../types';
 import { MapLocationPicker } from './MapLocationPicker';
+import { SessionStar, StarToggleButton } from './SessionStar';
 import { geocodeAddress, GeocodeRateLimitError, NOMINATIM_ATTRIBUTION } from '../utils/geocode';
 import { 
   X, 
@@ -214,15 +215,22 @@ export const SessionFormModal: React.FC<SessionFormModalProps> = ({
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
                 Session Title <span className="text-rose-500">*</span>
               </label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="e.g. Next-Gen Web Architectures"
-                className={`w-full px-3.5 py-2.5 rounded-lg border text-sm font-medium transition bg-slate-50/50 dark:bg-slate-800/60 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  formErrors.title ? 'border-rose-400 dark:border-rose-500' : 'border-slate-300 dark:border-slate-700'
-                }`}
-              />
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="e.g. Next-Gen Web Architectures"
+                  className={`flex-1 min-w-0 px-3.5 py-2.5 rounded-lg border text-sm font-medium transition bg-slate-50/50 dark:bg-slate-800/60 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    formErrors.title ? 'border-rose-400 dark:border-rose-500' : 'border-slate-300 dark:border-slate-700'
+                  }`}
+                />
+                <StarToggleButton
+                  starred={!!formData.starred}
+                  onToggle={() => setFormData((prev) => ({ ...prev, starred: !prev.starred }))}
+                  className="p-2.5 shrink-0"
+                />
+              </div>
               {formErrors.title && (
                 <p className="mt-1 text-xs text-rose-500 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" /> {formErrors.title}
@@ -626,6 +634,7 @@ export const SessionFormModal: React.FC<SessionFormModalProps> = ({
                   </span>
                 </div>
                 <h4 className="text-base font-bold text-slate-900 dark:text-white truncate">
+                  {formData.starred && <SessionStar />}
                   {formData.title || 'Untitled Session'}
                 </h4>
                 <p className="text-xs text-slate-600 dark:text-slate-300 font-medium mt-0.5">

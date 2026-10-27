@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ConferenceSession } from '../types';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { SessionStar } from './SessionStar';
 
 interface CalendarViewProps {
   sessions: ConferenceSession[];
@@ -10,6 +11,7 @@ interface CalendarViewProps {
 const HOUR_HEIGHT = 64; // px per hour
 const MIN_EVENT_MINUTES = 30; // keeps very short sessions readable
 const INDENT_PERCENT = 12; // horizontal cascade step for overlapping sessions
+const STARRED_LAYER = 100; // starred sessions are drawn above every unstarred one
 
 const toMinutes = (time: string): number => {
   const [h, m] = time.split(':').map(Number);
@@ -26,7 +28,8 @@ interface PositionedSession {
 /**
  * Lays out one day's sessions Google-Calendar style: overlapping sessions are
  * assigned to columns, and each column is indented so earlier sessions stay visible
- * underneath later ones.
+ * underneath later ones. Starred sessions are placed one column past every session they
+ * overlap, so they can be drawn on top while the others stay visible to their left.
  */
 function layoutDay(daySessions: ConferenceSession[]): PositionedSession[] {
   const items = daySessions
@@ -37,9 +40,12 @@ function layoutDay(daySessions: ConferenceSession[]): PositionedSession[] {
     })
     .sort((a, b) => a.start - b.start || b.end - a.end);
 
+  const starred = items.filter((item) => item.session.starred);
+  const others = items.filter((item) => !item.session.starred);
+
   const columnEnds: number[] = [];
   let clusterEnd = -1;
-  items.forEach((item) => {
+  others.forEach((item) => {
     if (item.start >= clusterEnd) {
       columnEnds.length = 0; // previous overlap cluster is over, restart columns
       clusterEnd = item.end;
@@ -50,7 +56,14 @@ function layoutDay(daySessions: ConferenceSession[]): PositionedSession[] {
     item.column = col;
     clusterEnd = Math.max(clusterEnd, item.end);
   });
-  return items;
+
+  const placed = [...others];
+  starred.forEach((item) => {
+    const overlapping = placed.filter((p) => p.start < item.end && item.start < p.end);
+    item.column = overlapping.length > 0 ? Math.max(...overlapping.map((p) => p.column + 1)) : 0;
+    placed.push(item);
+  });
+  return placed;
 }
 
 export const CalendarView: React.FC<CalendarViewProps> = ({ sessions, onEdit }) => {
@@ -166,17 +179,21 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ sessions, onEdit }) 
                   height,
                   left: `${left}%`,
                   width: `${100 - left}%`,
-                  zIndex: column + 1,
+                  zIndex: column + 1 + (session.starred ? STARRED_LAYER : 0),
                   backgroundColor: session.colorHex,
                 }}
               >
                 {compact ? (
                   <div className="text-xs leading-tight truncate">
+                    {session.starred && <SessionStar className="w-3 h-3" />}
                     <span className="font-bold">{session.title}</span>, {session.startTime} · {session.locationName}
                   </div>
                 ) : (
                   <>
-                    <div className="text-xs font-bold leading-tight line-clamp-2">{session.title}</div>
+                    <div className="text-xs font-bold leading-tight line-clamp-2">
+                      {session.starred && <SessionStar className="w-3 h-3" />}
+                      {session.title}
+                    </div>
                     <div className="text-[11px] leading-tight opacity-90">
                       {session.startTime} – {session.endTime}
                     </div>

@@ -202,6 +202,12 @@ class ConferenceViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    fun setStarred(session: ConferenceSession, starred: Boolean) {
+        viewModelScope.launch {
+            repository.updateSession(session.copy(starred = starred))
+        }
+    }
+
     fun deleteSession(sessionId: Long) {
         viewModelScope.launch {
             repository.deleteSessionById(sessionId)

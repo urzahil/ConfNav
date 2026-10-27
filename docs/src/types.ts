@@ -13,6 +13,7 @@ export interface ConferenceSession {
   colorHex: string;
   track?: string; // e.g. "Keynote"
   description?: string;
+  starred?: boolean; // Shown with a gold star and drawn on top in the calendar
   extraFields?: Record<string, unknown>; // Preserves any additional custom fields from JSON
 }
 
@@ -33,6 +34,7 @@ export const STANDARD_SESSION_KEYS = [
   'colorHex',
   'track',
   'description',
+  'starred',
 ] as const;
 
 export const COLOR_PALETTE_PRESETS = [

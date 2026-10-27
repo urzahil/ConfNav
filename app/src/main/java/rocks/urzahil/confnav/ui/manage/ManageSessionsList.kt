@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import rocks.urzahil.confnav.data.model.ConferenceSession
 import rocks.urzahil.confnav.ui.ConferenceViewModel
 import rocks.urzahil.confnav.ui.components.PinColorHelper
+import rocks.urzahil.confnav.ui.components.SessionTitleText
 import rocks.urzahil.confnav.ui.icons.filled.FileDownload
 
 /** The "All Sessions" tab: export/import buttons plus one card per configured session. */
@@ -172,8 +173,8 @@ internal fun ManageSessionsList(
                                 .background(locationColor)
                         )
                         Column {
-                            Text(
-                                text = session.title,
+                            SessionTitleText(
+                                session = session,
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,

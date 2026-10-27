@@ -1,5 +1,6 @@
 import React from 'react';
 import { ConferenceSession } from '../types';
+import { SessionStar, StarToggleButton } from './SessionStar';
 import { 
   Calendar, 
   Clock, 
@@ -17,6 +18,7 @@ interface SessionCardProps {
   onDuplicate: (session: ConferenceSession) => void;
   onDelete: (id: string) => void;
   onViewOnMap?: (session: ConferenceSession) => void;
+  onToggleStar: (session: ConferenceSession) => void;
 }
 
 export const SessionCard: React.FC<SessionCardProps> = ({
@@ -25,6 +27,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
   onDuplicate,
   onDelete,
   onViewOnMap,
+  onToggleStar,
 }) => {
   const formatDuration = (startTime: string, endTime: string) => {
     if (!startTime || !endTime) return '';
@@ -80,6 +83,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
 
           {/* Session Title */}
           <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-snug mb-1 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+            {session.starred && <SessionStar className="w-4.5 h-4.5" />}
             {session.title}
           </h3>
 
@@ -153,6 +157,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
           ) : <div />}
 
           <div className="flex items-center gap-1">
+            <StarToggleButton starred={!!session.starred} onToggle={() => onToggleStar(session)} />
             <button
               onClick={() => onDuplicate(session)}
               className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"

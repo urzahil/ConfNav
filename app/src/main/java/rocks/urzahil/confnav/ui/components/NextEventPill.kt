@@ -143,8 +143,8 @@ fun NextEventPill(
                         .weight(1f)
                         .padding(end = 6.dp)
                 ) {
-                    Text(
-                        text = session.title,
+                    SessionTitleText(
+                        session = session,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
