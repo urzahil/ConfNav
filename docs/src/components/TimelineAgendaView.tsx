@@ -1,17 +1,19 @@
 import React from 'react';
 import { ConferenceSession } from '../types';
-import { Clock, MapPin, User, Edit3, Trash2 } from 'lucide-react';
+import { Clock, MapPin, User, Edit3, Trash2, Copy } from 'lucide-react';
 
 interface TimelineAgendaViewProps {
   sessions: ConferenceSession[];
   onEdit: (session: ConferenceSession) => void;
   onDelete: (id: string) => void;
+  onDuplicate: (session: ConferenceSession) => void;
 }
 
 export const TimelineAgendaView: React.FC<TimelineAgendaViewProps> = ({
   sessions,
   onEdit,
   onDelete,
+  onDuplicate,
 }) => {
   // Group sessions by date
   const groupedByDate: Record<string, ConferenceSession[]> = {};
@@ -116,6 +118,13 @@ export const TimelineAgendaView: React.FC<TimelineAgendaViewProps> = ({
 
                     {/* Quick Actions */}
                     <div className="flex items-center gap-1 self-end sm:self-center shrink-0">
+                      <button
+                        onClick={() => onDuplicate(session)}
+                        className="p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-700 transition"
+                        title="Duplicate session"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
                       <button
                         onClick={() => onEdit(session)}
                         className="p-2 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-white dark:hover:bg-slate-700 transition"

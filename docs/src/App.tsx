@@ -520,6 +520,7 @@ export default function App() {
                 sessions={filteredSessions}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onDuplicate={handleDuplicate}
               />
             )}
 
