@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -62,7 +63,10 @@ private const val INDENT_FRACTION = 0.12f // horizontal cascade step for overlap
 fun CalendarDayScreen(
     viewModel: ConferenceViewModel,
     onNavigateToConfigure: (Long?) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
+    scrollToNow: Boolean = true,
+    onScrolledToNow: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val days = remember(uiState.sessions) {
@@ -73,24 +77,27 @@ fun CalendarDayScreen(
             .filter { (_, slots) -> slots.isNotEmpty() }
     }
     val today = LocalDate.now().toString()
-    val listState = rememberLazyListState()
     val density = LocalDensity.current
 
-    // Open on the current time when today is a conference day, else on the next conference
-    // day; before or after the conference, start at the top.
-    LaunchedEffect(days.isNotEmpty()) {
-        if (days.isEmpty() || today < days.first().first || today > days.last().first) return@LaunchedEffect
+    // When opened from the navigation bar (not when coming back from editing a session): jump
+    // to the current time when today is a conference day, else to the next conference day;
+    // before or after the conference, start at the top.
+    LaunchedEffect(scrollToNow, days.isNotEmpty()) {
+        if (!scrollToNow || days.isEmpty()) return@LaunchedEffect
         val dayIndex = days.indexOfFirst { (date, _) -> date >= today }
-        val (date, slots) = days[dayIndex]
-        if (date == today) {
-            val now = LocalTime.now()
-            val offset = with(density) {
-                minuteOffset(now.hour * 60 + now.minute - 60, firstHourOf(slots)).roundToPx()
+        when {
+            today < days.first().first || dayIndex == -1 -> listState.scrollToItem(0)
+            days[dayIndex].first == today -> {
+                val now = LocalTime.now()
+                val offset = with(density) {
+                    minuteOffset(now.hour * 60 + now.minute - 60, firstHourOf(days[dayIndex].second)).roundToPx()
+                }
+                listState.scrollToItem(dayIndex * 2 + 1, offset.coerceAtLeast(0))
             }
-            listState.scrollToItem(dayIndex * 2 + 1, offset.coerceAtLeast(0))
-        } else {
-            listState.scrollToItem(dayIndex * 2)
+            else -> listState.scrollToItem(dayIndex * 2)
         }
+        // Only after scrolling: this changes the effect's key, which would cancel it.
+        onScrolledToNow()
     }
 
     if (days.isEmpty()) {

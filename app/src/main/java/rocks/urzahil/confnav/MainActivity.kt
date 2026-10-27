@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.outlined.DateRange
@@ -71,6 +72,10 @@ fun ConferenceApp(
     var editingSessionId by remember { mutableStateOf<Long?>(null) }
     var editOriginTab by remember { mutableStateOf(NavigationTab.CONFIGURE) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    // Kept out here so the Calendar keeps its scroll position while a session is being edited;
+    // it only jumps to the current time when opened from the navigation bar.
+    val calendarListState = rememberLazyListState()
+    var calendarScrollToNow by remember { mutableStateOf(true) }
 
     // Back handling: pop back to Agenda screen if on sub-screens
     BackHandler(enabled = selectedTab != NavigationTab.AGENDA || uiState.selectedLocationPin != null) {
@@ -113,7 +118,10 @@ fun ConferenceApp(
                 // Tab 2: Calendar day grid
                 NavigationBarItem(
                     selected = selectedTab == NavigationTab.CALENDAR,
-                    onClick = { selectedTab = NavigationTab.CALENDAR },
+                    onClick = {
+                        if (selectedTab != NavigationTab.CALENDAR) calendarScrollToNow = true
+                        selectedTab = NavigationTab.CALENDAR
+                    },
                     icon = {
                         Icon(
                             imageVector = if (selectedTab == NavigationTab.CALENDAR) Icons.Filled.DateRange else Icons.Outlined.DateRange,
@@ -206,6 +214,9 @@ fun ConferenceApp(
                 NavigationTab.CALENDAR -> {
                     CalendarDayScreen(
                         viewModel = viewModel,
+                        listState = calendarListState,
+                        scrollToNow = calendarScrollToNow,
+                        onScrolledToNow = { calendarScrollToNow = false },
                         onNavigateToConfigure = { sessionId ->
                             editOriginTab = NavigationTab.CALENDAR
                             editingSessionId = sessionId
