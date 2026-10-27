@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -76,8 +77,10 @@ import rocks.urzahil.confnav.data.model.ConferenceSession
 import rocks.urzahil.confnav.data.model.SessionJsonHelper
 import rocks.urzahil.confnav.ui.ConferenceViewModel
 import rocks.urzahil.confnav.ui.components.PinColorHelper
+import rocks.urzahil.confnav.ui.components.StarGold
 import rocks.urzahil.confnav.ui.icons.filled.CalendarMonth
 import rocks.urzahil.confnav.ui.icons.filled.Schedule
+import rocks.urzahil.confnav.ui.icons.filled.StarBorder
 import rocks.urzahil.confnav.ui.icons.filled.Title
 import java.time.Instant
 import java.time.LocalDate
@@ -114,6 +117,7 @@ fun ConfigureSessionScreen(
     var latitude by remember { mutableStateOf(0.0) }
     var longitude by remember { mutableStateOf(0.0) }
     var description by remember { mutableStateOf("") }
+    var starred by remember { mutableStateOf(false) }
 
     // Calendar DatePicker Dialog State
     var showDatePickerDialog by remember { mutableStateOf(false) }
@@ -141,6 +145,7 @@ fun ConfigureSessionScreen(
         latitude = 0.0
         longitude = 0.0
         description = ""
+        starred = false
         track = ""
     }
 
@@ -157,6 +162,7 @@ fun ConfigureSessionScreen(
         latitude = session.latitude
         longitude = session.longitude
         description = session.description
+        starred = session.starred
         locationQuery = session.locationName
         track = session.track
     }
@@ -241,6 +247,18 @@ fun ConfigureSessionScreen(
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
+                        },
+                        trailingIcon = {
+                            IconButton(
+                                onClick = { starred = !starred },
+                                modifier = Modifier.testTag("toggle_session_starred")
+                            ) {
+                                Icon(
+                                    imageVector = if (starred) Icons.Filled.Star else Icons.Filled.StarBorder,
+                                    contentDescription = if (starred) "Unstar session" else "Star session",
+                                    tint = if (starred) StarGold else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -783,7 +801,8 @@ fun ConfigureSessionScreen(
                                     longitude = longitude,
                                     colorHex = "", // assigned by saveSession from the venue
                                     track = track,
-                                    description = description.trim()
+                                    description = description.trim(),
+                                    starred = starred
                                 )
 
                                 val wasEdit = currentId != 0L

@@ -30,6 +30,7 @@ export function sanitizeForExport(sessions: ConferenceSession[]): ExportedSessio
     if (track) base.track = track;
     const description = String(s.description || '').trim();
     if (description) base.description = description;
+    if (s.starred) base.starred = true;
 
     if (s.extraFields && typeof s.extraFields === 'object') {
       Object.entries(s.extraFields).forEach(([key, val]) => {
@@ -256,6 +257,7 @@ export function validateAndParseSessionsJson(rawText: string): ValidationResult 
     const speakerRole = text(obj.speakerRole);
     const track = text(obj.track);
     const description = text(obj.description);
+    const starred = obj.starred === true || text(obj.starred).toLowerCase() === 'true';
 
     validSessions.push({
       id: `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -272,6 +274,7 @@ export function validateAndParseSessionsJson(rawText: string): ValidationResult 
       colorHex,
       ...(track ? { track } : {}),
       ...(description ? { description } : {}),
+      ...(starred ? { starred } : {}),
       ...(Object.keys(extraFields).length > 0 ? { extraFields } : {}),
     });
   });

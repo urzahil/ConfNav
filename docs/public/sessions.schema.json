@@ -28,7 +28,8 @@
         "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
         "colorHex": { "type": "string", "pattern": "^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$" },
         "track": { "type": "string" },
-        "description": { "type": "string" }
+        "description": { "type": "string" },
+        "starred": { "type": "boolean", "default": false, "description": "Shown with a gold star before the title and drawn above other sessions in the calendar." }
       }
     }
   }

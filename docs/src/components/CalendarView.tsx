@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ConferenceSession } from '../types';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { SessionStar } from './SessionStar';
 
 interface CalendarViewProps {
   sessions: ConferenceSession[];
@@ -10,6 +11,7 @@ interface CalendarViewProps {
 const HOUR_HEIGHT = 64; // px per hour
 const MIN_EVENT_MINUTES = 30; // keeps very short sessions readable
 const INDENT_PERCENT = 12; // horizontal cascade step for overlapping sessions
+const STARRED_LAYER = 100; // starred sessions are drawn above every unstarred one
 
 const toMinutes = (time: string): number => {
   const [h, m] = time.split(':').map(Number);
@@ -166,17 +168,21 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ sessions, onEdit }) 
                   height,
                   left: `${left}%`,
                   width: `${100 - left}%`,
-                  zIndex: column + 1,
+                  zIndex: column + 1 + (session.starred ? STARRED_LAYER : 0),
                   backgroundColor: session.colorHex,
                 }}
               >
                 {compact ? (
                   <div className="text-xs leading-tight truncate">
+                    {session.starred && <SessionStar className="w-3 h-3" />}
                     <span className="font-bold">{session.title}</span>, {session.startTime} · {session.locationName}
                   </div>
                 ) : (
                   <>
-                    <div className="text-xs font-bold leading-tight line-clamp-2">{session.title}</div>
+                    <div className="text-xs font-bold leading-tight line-clamp-2">
+                      {session.starred && <SessionStar className="w-3 h-3" />}
+                      {session.title}
+                    </div>
                     <div className="text-[11px] leading-tight opacity-90">
                       {session.startTime} – {session.endTime}
                     </div>

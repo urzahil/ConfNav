@@ -1,5 +1,6 @@
 import React from 'react';
 import { ConferenceSession } from '../types';
+import { SessionStar, StarToggleButton } from './SessionStar';
 import { Clock, MapPin, User, Edit3, Trash2, Copy } from 'lucide-react';
 
 interface TimelineAgendaViewProps {
@@ -7,6 +8,7 @@ interface TimelineAgendaViewProps {
   onEdit: (session: ConferenceSession) => void;
   onDelete: (id: string) => void;
   onDuplicate: (session: ConferenceSession) => void;
+  onToggleStar: (session: ConferenceSession) => void;
 }
 
 export const TimelineAgendaView: React.FC<TimelineAgendaViewProps> = ({
@@ -14,6 +16,7 @@ export const TimelineAgendaView: React.FC<TimelineAgendaViewProps> = ({
   onEdit,
   onDelete,
   onDuplicate,
+  onToggleStar,
 }) => {
   // Group sessions by date
   const groupedByDate: Record<string, ConferenceSession[]> = {};
@@ -98,6 +101,7 @@ export const TimelineAgendaView: React.FC<TimelineAgendaViewProps> = ({
 
                       {/* Title */}
                       <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                        {session.starred && <SessionStar />}
                         {session.title}
                       </h4>
 
@@ -118,6 +122,11 @@ export const TimelineAgendaView: React.FC<TimelineAgendaViewProps> = ({
 
                     {/* Quick Actions */}
                     <div className="flex items-center gap-1 self-end sm:self-center shrink-0">
+                      <StarToggleButton
+                        starred={!!session.starred}
+                        onToggle={() => onToggleStar(session)}
+                        className="p-2"
+                      />
                       <button
                         onClick={() => onDuplicate(session)}
                         className="p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-700 transition"

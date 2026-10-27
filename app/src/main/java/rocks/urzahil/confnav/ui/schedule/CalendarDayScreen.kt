@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.zIndex
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -46,6 +47,7 @@ import rocks.urzahil.confnav.ui.ConferenceViewModel
 import rocks.urzahil.confnav.ui.DayFilter
 import rocks.urzahil.confnav.ui.components.NextEventPill
 import rocks.urzahil.confnav.ui.components.PinColorHelper
+import rocks.urzahil.confnav.ui.components.SessionTitleText
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Locale
@@ -58,7 +60,7 @@ private const val INDENT_FRACTION = 0.12f // horizontal cascade step for overlap
  * The conference days picked in the day filter on one continuous hourly time grid, like a calendar app. Each day
  * starts with the same date pill as the Agenda, which sticks to the top while scrolling
  * through that day. Overlapping sessions are drawn cascaded on top of each other so every
- * one of them stays visible.
+ * one of them stays visible; starred sessions are always drawn above the others.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -244,6 +246,7 @@ private fun CalendarDayGrid(
                     slot = slot,
                     compact = height < 48.dp,
                     modifier = Modifier
+                        .zIndex(if (slot.session.starred) 1f else 0f)
                         .offset(x = maxWidth * indent, y = top)
                         .width(maxWidth * (1f - indent))
                         .height(height)
@@ -258,6 +261,7 @@ private fun CalendarDayGrid(
                     val y = minuteToY(nowMinute)
                     Box(
                         Modifier
+                            .zIndex(2f)
                             .offset(y = y - 1.dp)
                             .fillMaxWidth()
                             .height(2.dp)
@@ -265,6 +269,7 @@ private fun CalendarDayGrid(
                     )
                     Box(
                         Modifier
+                            .zIndex(2f)
                             .offset(x = (-4).dp, y = y - 5.dp)
                             .size(10.dp)
                             .background(MaterialTheme.colorScheme.error, CircleShape)
@@ -291,7 +296,8 @@ private fun CalendarSessionBlock(
             .testTag("calendar_session_${session.id}")
     ) {
         if (compact) {
-            Text(
+            SessionTitleText(
+                session = session,
                 text = "${session.title}, ${session.startTime} · ${session.locationName}",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
@@ -300,8 +306,8 @@ private fun CalendarSessionBlock(
                 overflow = TextOverflow.Ellipsis
             )
         } else {
-            Text(
-                text = session.title,
+            SessionTitleText(
+                session = session,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,

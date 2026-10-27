@@ -151,7 +151,8 @@ fun ScheduleScreen(
                                 session = session,
                                 onOpenDirections = { openDirections(context, session) },
                                 onViewOnMap = { onNavigateToMap(session) },
-                                onEdit = { onNavigateToConfigure(session.id) }
+                                onEdit = { onNavigateToConfigure(session.id) },
+                                onToggleStar = { viewModel.setStarred(session, !session.starred) }
                             )
                         }
                     }

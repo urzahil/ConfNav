@@ -128,6 +128,10 @@ export default function App() {
     showToast(`Duplicated "${session.title}"`);
   };
 
+  const handleToggleStar = (session: ConferenceSession) => {
+    setSessions((prev) => prev.map((s) => (s.id === session.id ? { ...s, starred: !s.starred } : s)));
+  };
+
   const handleDelete = (id: string, onDeleted?: () => void) => {
     const sessionToDelete = sessions.find((s) => s.id === id);
     if (!sessionToDelete) return;
@@ -520,6 +524,7 @@ export default function App() {
                         onDuplicate={handleDuplicate}
                         onDelete={handleDelete}
                         onViewOnMap={handleViewOnMap}
+                        onToggleStar={handleToggleStar}
                       />
                     ))}
                   </div>
@@ -534,6 +539,7 @@ export default function App() {
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onDuplicate={handleDuplicate}
+                onToggleStar={handleToggleStar}
               />
             )}
 

@@ -80,7 +80,7 @@ export const MapView: React.FC<MapViewProps> = ({
             <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${color};"></span>
             <span style="font-size: 11px; font-weight: 700; color: ${color}; text-transform: uppercase;">${escapeHtml(session.locationName)}</span>
           </div>
-          <div style="font-weight: 700; font-size: 14px; color: #0f172a; margin-bottom: 2px;">${escapeHtml(session.title)}</div>
+          <div style="font-weight: 700; font-size: 14px; color: #0f172a; margin-bottom: 2px;">${session.starred ? '<span style="color: #fbbf24;" aria-label="Starred">★</span> ' : ''}${escapeHtml(session.title)}</div>
           <div style="font-size: 12px; color: #475569; margin-bottom: 6px;">Speaker: <b>${escapeHtml(session.speaker)}</b></div>
           <div style="font-size: 11px; color: #64748b; margin-bottom: 8px;">
             📅 ${escapeHtml(session.date)} | ⏰ ${escapeHtml(session.startTime)} - ${escapeHtml(session.endTime)}

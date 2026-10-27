@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import rocks.urzahil.confnav.data.model.LocationGroup
 import rocks.urzahil.confnav.ui.ConferenceViewModel
 import rocks.urzahil.confnav.ui.components.PinColorHelper
+import rocks.urzahil.confnav.ui.components.SessionTitleText
 import rocks.urzahil.confnav.ui.icons.filled.Directions
 
 @Composable
@@ -210,8 +211,8 @@ fun LocationDetailsCard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = session.title,
+                                SessionTitleText(
+                                    session = session,
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1,
