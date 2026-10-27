@@ -53,6 +53,5 @@ data class LocationSuggestion(
     val address: String,
     val latitude: Double,
     val longitude: Double,
-    val placeId: String? = null,
-    val isPreset: Boolean = false
+    val placeId: String? = null
 )

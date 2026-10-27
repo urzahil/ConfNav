@@ -42,7 +42,6 @@ data class ConferenceUiState(
     val nextSession: ConferenceSession? = null,
     val selectedFilter: DayFilter = DayFilter.All,
     val availableFilters: List<DayFilter> = listOf(DayFilter.All),
-    val isLoading: Boolean = false,
     val locationSuggestions: List<LocationSuggestion> = emptyList(),
     val isSearchingLocations: Boolean = false
 )

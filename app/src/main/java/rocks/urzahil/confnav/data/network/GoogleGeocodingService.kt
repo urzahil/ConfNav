@@ -1,7 +1,6 @@
 package rocks.urzahil.confnav.data.network
 
 import com.squareup.moshi.Moshi
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
@@ -19,12 +18,6 @@ interface GoogleGeocodingService {
     ): PlacesAutocompleteResponse
 
     @GET("maps/api/geocode/json")
-    suspend fun geocodeAddress(
-        @Query("address") address: String,
-        @Query("key") apiKey: String
-    ): GeocodeResponse
-
-    @GET("maps/api/geocode/json")
     suspend fun geocodePlaceId(
         @Query("place_id") placeId: String,
         @Query("key") apiKey: String
@@ -39,9 +32,8 @@ interface GoogleGeocodingService {
                 .readTimeout(15, TimeUnit.SECONDS)
                 .build()
 
-            val moshi = Moshi.Builder()
-                .add(KotlinJsonAdapterFactory())
-                .build()
+            // Every response model has a codegen adapter (@JsonClass), so no reflection factory is needed.
+            val moshi = Moshi.Builder().build()
 
             val retrofit = Retrofit.Builder()
                 .baseUrl(BASE_URL)

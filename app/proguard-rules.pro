@@ -1,24 +1,4 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
-
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
-
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Project-specific R8 rules (the default proguard-android-optimize.txt rules also apply).
 
 # OkHttp's Bouncy Castle TLS integration is optional on Android.
 # The classes below are only referenced when that optional provider is present.
@@ -29,7 +9,7 @@
 -dontwarn org.conscrypt.**
 -dontwarn org.openjsse.**
 
-# Keep line numbers in crash stack traces; the mapping file (app/build/outputs/mapping) is
-# uploaded by the release workflow so they can be de-obfuscated.
+# Keep line numbers in crash stack traces. They can be de-obfuscated with the R8 mapping file
+# written to app/build/outputs/mapping/release for the build that produced the APK.
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile

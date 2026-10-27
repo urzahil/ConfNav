@@ -13,12 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.EditCalendar
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.EditCalendar
-import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -36,17 +30,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import rocks.urzahil.confnav.ui.ConferenceViewModel
+import rocks.urzahil.confnav.ui.icons.filled.CalendarMonth
+import rocks.urzahil.confnav.ui.icons.filled.EditCalendar
+import rocks.urzahil.confnav.ui.icons.filled.Map
+import rocks.urzahil.confnav.ui.icons.outlined.CalendarMonth
+import rocks.urzahil.confnav.ui.icons.outlined.EditCalendar
+import rocks.urzahil.confnav.ui.icons.outlined.Map
 import rocks.urzahil.confnav.ui.manage.ConfigureSessionScreen
 import rocks.urzahil.confnav.ui.map.ConferenceMapScreen
 import rocks.urzahil.confnav.ui.schedule.ScheduleScreen
-import rocks.urzahil.confnav.ui.theme.MyApplicationTheme
+import rocks.urzahil.confnav.ui.theme.ConfNavTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MyApplicationTheme {
+            ConfNavTheme {
                 ConferenceApp()
             }
         }

@@ -100,24 +100,4 @@ object PinColorHelper {
             defaultColor
         }
     }
-
-    fun getHue(hex: String): Float {
-        val color = parseColor(hex)
-        val r = color.red
-        val g = color.green
-        val b = color.blue
-        val max = maxOf(r, g, b)
-        val min = minOf(r, g, b)
-        val delta = max - min
-
-        if (delta == 0f) return 0f
-
-        val hue = when (max) {
-            r -> ((g - b) / delta) % 6f
-            g -> ((b - r) / delta) + 2f
-            else -> ((r - g) / delta) + 4f
-        } * 60f
-
-        return if (hue < 0f) hue + 360f else hue
-    }
 }

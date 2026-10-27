@@ -67,7 +67,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun MyApplicationTheme(
+fun ConfNavTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true, // Material You dynamic colors enabled by default on Android 12+
     content: @Composable () -> Unit,

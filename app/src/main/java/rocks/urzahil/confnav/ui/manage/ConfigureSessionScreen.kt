@@ -1,10 +1,8 @@
 package rocks.urzahil.confnav.ui.manage
 
-import android.net.Uri
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,18 +24,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Title
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -55,7 +46,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -71,9 +62,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -85,11 +76,13 @@ import rocks.urzahil.confnav.data.model.ConferenceSession
 import rocks.urzahil.confnav.data.model.SessionJsonHelper
 import rocks.urzahil.confnav.ui.ConferenceViewModel
 import rocks.urzahil.confnav.ui.components.PinColorHelper
+import rocks.urzahil.confnav.ui.icons.filled.CalendarMonth
+import rocks.urzahil.confnav.ui.icons.filled.Schedule
+import rocks.urzahil.confnav.ui.icons.filled.Title
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,9 +97,9 @@ fun ConfigureSessionScreen(
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
-    val clipboardManager = LocalClipboardManager.current
+    val locale = LocalLocale.current.platformLocale
 
-    var selectedTab by remember { mutableIntStateOf(if (editingSessionId != null) 0 else 0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
 
     // Form fields state
     var currentId by remember { mutableStateOf(editingSessionId ?: 0L) }
@@ -132,9 +125,8 @@ fun ConfigureSessionScreen(
     // Dialog state for delete confirmation
     var sessionToDelete by remember { mutableStateOf<ConferenceSession?>(null) }
 
-    // Fields the form does not show but must keep when a session is edited
+    // Field the form does not show but must keep when a session is edited
     var track by remember { mutableStateOf("") }
-    var isBookmarked by remember { mutableStateOf(true) }
 
     fun clearForm() {
         currentId = 0L
@@ -150,7 +142,6 @@ fun ConfigureSessionScreen(
         longitude = 0.0
         description = ""
         track = ""
-        isBookmarked = true
     }
 
     fun loadSession(session: ConferenceSession) {
@@ -168,7 +159,6 @@ fun ConfigureSessionScreen(
         description = session.description
         locationQuery = session.locationName
         track = session.track
-        isBookmarked = session.isBookmarked
     }
 
     // JSON export / import (file pickers, add-or-replace dialog and result messages)
@@ -189,10 +179,10 @@ fun ConfigureSessionScreen(
     }
 
     // Formatted date string for user-friendly display
-    val formattedSelectedDate = remember(selectedDate) {
+    val formattedSelectedDate = remember(selectedDate, locale) {
         try {
             val parsed = LocalDate.parse(selectedDate)
-            parsed.format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale.getDefault()))
+            parsed.format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", locale))
         } catch (_: Exception) {
             selectedDate
         }
@@ -204,7 +194,7 @@ fun ConfigureSessionScreen(
             .testTag("configure_session_screen")
     ) {
         // Tabs: "Form" vs "Manage All (N)"
-        TabRow(
+        SecondaryTabRow(
             selectedTabIndex = selectedTab,
             containerColor = MaterialTheme.colorScheme.surface
         ) {
@@ -369,7 +359,7 @@ fun ConfigureSessionScreen(
                                     val isSelected = selectedDate == dateStr
                                     val shortLabel = try {
                                         val d = LocalDate.parse(dateStr)
-                                        d.format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()))
+                                        d.format(DateTimeFormatter.ofPattern("d MMM", locale))
                                     } catch (_: Exception) {
                                         dateStr
                                     }
@@ -497,7 +487,7 @@ fun ConfigureSessionScreen(
                                 shape = RoundedCornerShape(12.dp),
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 tonalElevation = 4.dp,
-                                border = androidx.compose.foundation.BorderStroke(
+                                border = BorderStroke(
                                     1.dp,
                                     MaterialTheme.colorScheme.outlineVariant
                                 )
@@ -763,13 +753,9 @@ fun ConfigureSessionScreen(
                                     address = locationAddress.trim(),
                                     latitude = latitude,
                                     longitude = longitude,
-                                    colorHex = viewModel.getOrAssignVenueColor(
-                                        locationName.trim(),
-                                        currentId
-                                    ),
+                                    colorHex = "", // assigned by saveSession from the venue
                                     track = track,
-                                    description = description.trim(),
-                                    isBookmarked = isBookmarked
+                                    description = description.trim()
                                 )
 
                                 val wasEdit = currentId != 0L
@@ -881,7 +867,7 @@ fun ConfigureSessionScreen(
                                 val pickedDate = Instant.ofEpochMilli(selectedMillis)
                                     .atZone(ZoneOffset.UTC)
                                     .toLocalDate()
-                                pickedDate.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.getDefault()))
+                                pickedDate.format(DateTimeFormatter.ofPattern("d MMMM yyyy", locale))
                             } catch (_: Exception) {
                                 selectedDate
                             }

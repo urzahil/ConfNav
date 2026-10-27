@@ -7,7 +7,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -24,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import rocks.urzahil.confnav.data.model.ImportReport
 import rocks.urzahil.confnav.ui.ConferenceViewModel
 import rocks.urzahil.confnav.ui.ImportOutcome
+import rocks.urzahil.confnav.ui.icons.filled.FileDownload
 
 private const val EXPORT_FILE_NAME = "conference_sessions.json"
 private const val MAX_IMPORT_CHARS = 5_000_000
