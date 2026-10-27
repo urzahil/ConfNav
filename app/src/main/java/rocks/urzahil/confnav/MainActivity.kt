@@ -72,8 +72,10 @@ fun ConferenceApp(
     var editingSessionId by remember { mutableStateOf<Long?>(null) }
     var editOriginTab by remember { mutableStateOf(NavigationTab.CONFIGURE) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    // Kept out here so the Calendar keeps its scroll position while a session is being edited;
-    // it only jumps to the current time when opened from the navigation bar.
+    // Kept out here so the Agenda and Calendar keep their scroll position while a session is
+    // being edited; they only jump to the current day/time when opened from the navigation bar.
+    val agendaListState = rememberLazyListState()
+    var agendaScrollToNow by remember { mutableStateOf(true) }
     val calendarListState = rememberLazyListState()
     var calendarScrollToNow by remember { mutableStateOf(true) }
 
@@ -99,7 +101,10 @@ fun ConferenceApp(
                 // Tab 1: Agenda / Calendar
                 NavigationBarItem(
                     selected = selectedTab == NavigationTab.AGENDA,
-                    onClick = { selectedTab = NavigationTab.AGENDA },
+                    onClick = {
+                        if (selectedTab != NavigationTab.AGENDA) agendaScrollToNow = true
+                        selectedTab = NavigationTab.AGENDA
+                    },
                     icon = {
                         Icon(
                             imageVector = if (selectedTab == NavigationTab.AGENDA) Icons.Filled.CalendarMonth else Icons.Outlined.CalendarMonth,
@@ -192,6 +197,9 @@ fun ConferenceApp(
                 NavigationTab.AGENDA -> {
                     ScheduleScreen(
                         viewModel = viewModel,
+                        listState = agendaListState,
+                        scrollToNow = agendaScrollToNow,
+                        onScrollToNowChange = { agendaScrollToNow = it },
                         onNavigateToMap = { session ->
                             if (session != null) {
                                 val targetGroup = uiState.locationGroups.firstOrNull { group ->
