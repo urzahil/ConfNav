@@ -57,7 +57,9 @@ object AgendaLogic {
     /**
      * Lays out one day's sessions for the calendar grid, Google-Calendar style: sessions that
      * overlap are put in separate columns (reusing a column once it is free again), so each
-     * can be drawn indented over the earlier ones. Sessions shorter than [minDurationMinutes]
+     * can be drawn indented over the earlier ones. Starred sessions are placed one column past
+     * every session they overlap, so they can be drawn on top while the others stay visible
+     * to their left. Sessions shorter than [minDurationMinutes]
      * are stretched so they stay readable; sessions with unreadable times are left out.
      */
     fun layoutCalendarDay(
@@ -71,11 +73,12 @@ object AgendaLogic {
             val endMinute = maxOf(end.hour * 60 + end.minute, startMinute + minDurationMinutes)
             Triple(session, startMinute, endMinute)
         }.sortedWith(compareBy({ it.second }, { -it.third }))
+        val (starred, others) = timed.partition { it.first.starred }
 
         val slots = mutableListOf<CalendarSlot>()
         val columnEnds = mutableListOf<Int>()
         var clusterEnd = -1
-        for ((session, start, end) in timed) {
+        for ((session, start, end) in others) {
             if (start >= clusterEnd) {
                 // Nothing still running overlaps this one: start a fresh set of columns.
                 columnEnds.clear()
@@ -89,6 +92,12 @@ object AgendaLogic {
                 columnEnds[column] = end
             }
             clusterEnd = maxOf(clusterEnd, end)
+            slots.add(CalendarSlot(session, start, end, column))
+        }
+        for ((session, start, end) in starred) {
+            val column = slots
+                .filter { it.startMinute < end && start < it.endMinute }
+                .maxOfOrNull { it.column + 1 } ?: 0
             slots.add(CalendarSlot(session, start, end, column))
         }
         return slots

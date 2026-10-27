@@ -60,7 +60,7 @@ private const val INDENT_FRACTION = 0.12f // horizontal cascade step for overlap
  * The conference days picked in the day filter on one continuous hourly time grid, like a calendar app. Each day
  * starts with the same date pill as the Agenda, which sticks to the top while scrolling
  * through that day. Overlapping sessions are drawn cascaded on top of each other so every
- * one of them stays visible; starred sessions always take the full width and are drawn above the others.
+ * one of them stays visible; starred sessions are indented past the sessions they overlap and drawn above them.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -239,9 +239,7 @@ private fun CalendarDayGrid(
             }
 
             slots.forEach { slot ->
-                // Starred sessions always take the full width; the others cascade underneath them.
-                val indent = if (slot.session.starred) 0f
-                else (slot.column * INDENT_FRACTION).coerceAtMost(1f - INDENT_FRACTION * 2)
+                val indent = (slot.column * INDENT_FRACTION).coerceAtMost(1f - INDENT_FRACTION * 2)
                 val top = minuteToY(slot.startMinute)
                 val height = (minuteToY(slot.endMinute) - top - 2.dp).coerceAtLeast(20.dp)
                 CalendarSessionBlock(

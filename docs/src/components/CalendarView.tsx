@@ -28,7 +28,8 @@ interface PositionedSession {
 /**
  * Lays out one day's sessions Google-Calendar style: overlapping sessions are
  * assigned to columns, and each column is indented so earlier sessions stay visible
- * underneath later ones.
+ * underneath later ones. Starred sessions are placed one column past every session they
+ * overlap, so they can be drawn on top while the others stay visible to their left.
  */
 function layoutDay(daySessions: ConferenceSession[]): PositionedSession[] {
   const items = daySessions
@@ -39,9 +40,12 @@ function layoutDay(daySessions: ConferenceSession[]): PositionedSession[] {
     })
     .sort((a, b) => a.start - b.start || b.end - a.end);
 
+  const starred = items.filter((item) => item.session.starred);
+  const others = items.filter((item) => !item.session.starred);
+
   const columnEnds: number[] = [];
   let clusterEnd = -1;
-  items.forEach((item) => {
+  others.forEach((item) => {
     if (item.start >= clusterEnd) {
       columnEnds.length = 0; // previous overlap cluster is over, restart columns
       clusterEnd = item.end;
@@ -52,7 +56,14 @@ function layoutDay(daySessions: ConferenceSession[]): PositionedSession[] {
     item.column = col;
     clusterEnd = Math.max(clusterEnd, item.end);
   });
-  return items;
+
+  const placed = [...others];
+  starred.forEach((item) => {
+    const overlapping = placed.filter((p) => p.start < item.end && item.start < p.end);
+    item.column = overlapping.length > 0 ? Math.max(...overlapping.map((p) => p.column + 1)) : 0;
+    placed.push(item);
+  });
+  return placed;
 }
 
 export const CalendarView: React.FC<CalendarViewProps> = ({ sessions, onEdit }) => {
@@ -155,8 +166,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ sessions, onEdit }) 
           {positioned.map(({ session, start, end, column }) => {
             const top = ((start - firstHour * 60) / 60) * HOUR_HEIGHT;
             const height = Math.max(((end - start) / 60) * HOUR_HEIGHT - 2, 20);
-            // Starred sessions always take the full width; the others cascade underneath them.
-            const left = session.starred ? 0 : Math.min(column * INDENT_PERCENT, 100 - INDENT_PERCENT * 2);
+            const left = Math.min(column * INDENT_PERCENT, 100 - INDENT_PERCENT * 2);
             const compact = height < 44;
             return (
               <button
