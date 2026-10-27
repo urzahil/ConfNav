@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "rocks.urzahil.confnav"
-    compileSdk { version = release(36) { minorApiLevel = 1 } }
+    compileSdk { version = release(37) }
 
     defaultConfig {
         applicationId = "rocks.urzahil.confnav"
@@ -62,8 +62,8 @@ android {
         debug { }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
         // java.time is only built into Android from API 26; desugaring provides it on API 24-25.
         isCoreLibraryDesugaringEnabled = true
     }

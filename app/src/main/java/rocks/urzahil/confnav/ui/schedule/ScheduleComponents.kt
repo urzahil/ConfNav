@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -33,7 +34,6 @@ import rocks.urzahil.confnav.ui.DayFilter
 import rocks.urzahil.confnav.ui.icons.filled.CalendarMonth
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 @Composable
 fun DayFilterChipsRow(
@@ -94,9 +94,10 @@ fun DayFilterChipsRow(
 
 @Composable
 fun DayDateHeader(date: String) {
+    val locale = LocalLocale.current.platformLocale
     val formatted = try {
         val parsed = LocalDate.parse(date)
-        parsed.format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale.getDefault()))
+        parsed.format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", locale))
     } catch (_: Exception) {
         date
     }

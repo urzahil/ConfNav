@@ -46,7 +46,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -64,6 +64,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -82,7 +83,6 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,6 +97,7 @@ fun ConfigureSessionScreen(
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
+    val locale = LocalLocale.current.platformLocale
 
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -181,10 +182,10 @@ fun ConfigureSessionScreen(
     }
 
     // Formatted date string for user-friendly display
-    val formattedSelectedDate = remember(selectedDate) {
+    val formattedSelectedDate = remember(selectedDate, locale) {
         try {
             val parsed = LocalDate.parse(selectedDate)
-            parsed.format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale.getDefault()))
+            parsed.format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", locale))
         } catch (_: Exception) {
             selectedDate
         }
@@ -196,7 +197,7 @@ fun ConfigureSessionScreen(
             .testTag("configure_session_screen")
     ) {
         // Tabs: "Form" vs "Manage All (N)"
-        TabRow(
+        SecondaryTabRow(
             selectedTabIndex = selectedTab,
             containerColor = MaterialTheme.colorScheme.surface
         ) {
@@ -361,7 +362,7 @@ fun ConfigureSessionScreen(
                                     val isSelected = selectedDate == dateStr
                                     val shortLabel = try {
                                         val d = LocalDate.parse(dateStr)
-                                        d.format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()))
+                                        d.format(DateTimeFormatter.ofPattern("d MMM", locale))
                                     } catch (_: Exception) {
                                         dateStr
                                     }
@@ -870,7 +871,7 @@ fun ConfigureSessionScreen(
                                 val pickedDate = Instant.ofEpochMilli(selectedMillis)
                                     .atZone(ZoneOffset.UTC)
                                     .toLocalDate()
-                                pickedDate.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.getDefault()))
+                                pickedDate.format(DateTimeFormatter.ofPattern("d MMMM yyyy", locale))
                             } catch (_: Exception) {
                                 selectedDate
                             }
