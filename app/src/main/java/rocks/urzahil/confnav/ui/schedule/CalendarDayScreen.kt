@@ -1,11 +1,13 @@
 package rocks.urzahil.confnav.ui.schedule
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,19 +17,16 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,6 +35,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import rocks.urzahil.confnav.ui.AgendaLogic
@@ -52,9 +52,12 @@ private val TIME_GUTTER_WIDTH = 48.dp
 private const val INDENT_FRACTION = 0.12f // horizontal cascade step for overlapping sessions
 
 /**
- * Day view on an hourly time grid, like a calendar app: overlapping sessions are drawn
- * cascaded on top of each other so every one of them stays visible.
+ * All conference days on one continuous hourly time grid, like a calendar app. Each day
+ * starts with the same date pill as the Agenda, which sticks to the top while scrolling
+ * through that day. Overlapping sessions are drawn cascaded on top of each other so every
+ * one of them stays visible.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CalendarDayScreen(
     viewModel: ConferenceViewModel,
@@ -62,78 +65,97 @@ fun CalendarDayScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val dayFilters = remember(uiState.availableFilters) {
-        uiState.availableFilters.filterIsInstance<DayFilter.SpecificDate>()
+    val days = remember(uiState.sessions) {
+        uiState.sessions
+            .groupBy { it.date }
+            .toSortedMap()
+            .map { (date, sessions) -> date to AgendaLogic.layoutCalendarDay(sessions) }
+            .filter { (_, slots) -> slots.isNotEmpty() }
     }
-    var pickedDate by rememberSaveable { mutableStateOf<String?>(null) }
-
-    // Fall back to the day picked in the Agenda, else today if it is a conference day, else the first day.
     val today = LocalDate.now().toString()
-    val activeFilter = dayFilters.firstOrNull { it.date == pickedDate }
-        ?: dayFilters.firstOrNull { it == uiState.selectedFilter }
-        ?: dayFilters.firstOrNull { it.date == today }
-        ?: dayFilters.firstOrNull()
+    val listState = rememberLazyListState()
+    val density = LocalDensity.current
 
-    Column(
+    // Open on the current time when today is a conference day, else on the next conference
+    // day; before or after the conference, start at the top.
+    LaunchedEffect(days.isNotEmpty()) {
+        if (days.isEmpty() || today < days.first().first || today > days.last().first) return@LaunchedEffect
+        val dayIndex = days.indexOfFirst { (date, _) -> date >= today }
+        val (date, slots) = days[dayIndex]
+        if (date == today) {
+            val now = LocalTime.now()
+            val offset = with(density) {
+                minuteOffset(now.hour * 60 + now.minute - 60, firstHourOf(slots)).roundToPx()
+            }
+            listState.scrollToItem(dayIndex * 2 + 1, offset.coerceAtLeast(0))
+        } else {
+            listState.scrollToItem(dayIndex * 2)
+        }
+    }
+
+    if (days.isEmpty()) {
+        EmptyScheduleView(
+            filter = DayFilter.All,
+            onResetFilter = {},
+            onAddSession = { onNavigateToConfigure(null) }
+        )
+        return
+    }
+
+    LazyColumn(
+        state = listState,
         modifier = modifier
             .fillMaxSize()
-            .testTag("calendar_screen")
+            .testTag("calendar_screen"),
+        contentPadding = PaddingValues(bottom = 24.dp)
     ) {
-        if (activeFilter == null) {
-            EmptyScheduleView(
-                filter = DayFilter.All,
-                onResetFilter = {},
-                onAddSession = { onNavigateToConfigure(null) }
-            )
-        } else {
-            DayFilterChipsRow(
-                filters = dayFilters,
-                selectedFilter = activeFilter,
-                onFilterSelected = { pickedDate = (it as? DayFilter.SpecificDate)?.date },
-                modifier = Modifier.padding(bottom = 6.dp)
-            )
-
-            val slots = remember(uiState.sessions, activeFilter.date) {
-                AgendaLogic.layoutCalendarDay(uiState.sessions.filter { it.date == activeFilter.date })
+        days.forEach { (date, slots) ->
+            stickyHeader(key = "header_$date") {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                ) {
+                    DayDateHeader(date = date)
+                }
             }
-            CalendarDayGrid(
-                slots = slots,
-                isToday = activeFilter.date == today,
-                onSessionClick = { onNavigateToConfigure(it) }
-            )
+            item(key = "grid_$date") {
+                CalendarDayGrid(
+                    slots = slots,
+                    isToday = date == today,
+                    onSessionClick = { onNavigateToConfigure(it) },
+                    modifier = Modifier.testTag("calendar_grid_$date")
+                )
+            }
         }
     }
 }
+
+/** The hour a day's grid starts at: one hour before its first session. */
+private fun firstHourOf(slots: List<CalendarSlot>): Int =
+    (slots.minOf { it.startMinute } / 60 - 1).coerceAtLeast(0)
+
+private fun minuteOffset(minute: Int, firstHour: Int): Dp =
+    HOUR_HEIGHT * ((minute - firstHour * 60) / 60f)
 
 @Composable
 private fun CalendarDayGrid(
     slots: List<CalendarSlot>,
     isToday: Boolean,
-    onSessionClick: (Long) -> Unit
+    onSessionClick: (Long) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    if (slots.isEmpty()) return
-
-    val firstHour = (slots.minOf { it.startMinute } / 60 - 1).coerceAtLeast(0)
+    val firstHour = firstHourOf(slots)
     val lastHour = ((slots.maxOf { it.endMinute } + 59) / 60 + 1).coerceAtMost(24)
     val hourCount = lastHour - firstHour
-    val scrollState = rememberScrollState()
-    val density = LocalDensity.current
 
-    fun minuteToY(minute: Int) = HOUR_HEIGHT * ((minute - firstHour * 60) / 60f)
-
-    // Open on the current time when viewing today, otherwise on the first session.
-    LaunchedEffect(firstHour, isToday) {
-        val now = LocalTime.now()
-        val focusMinute = if (isToday) now.hour * 60 + now.minute - 60 else slots.minOf { it.startMinute }
-        scrollState.scrollTo(with(density) { minuteToY(focusMinute).roundToPx() }.coerceAtLeast(0))
-    }
+    fun minuteToY(minute: Int) = minuteOffset(minute, firstHour)
 
     Row(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(start = 4.dp, end = 12.dp, top = 8.dp, bottom = 24.dp)
-            .testTag("calendar_grid")
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = 4.dp, end = 12.dp, top = 8.dp, bottom = 16.dp)
     ) {
         // Hour labels
         Box(
