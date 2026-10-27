@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import rocks.urzahil.confnav.data.model.ConferenceSession
 import rocks.urzahil.confnav.ui.ConferenceViewModel
 import rocks.urzahil.confnav.ui.icons.filled.CalendarMonth
 import rocks.urzahil.confnav.ui.icons.filled.EditCalendar
@@ -78,6 +79,19 @@ fun ConferenceApp(
     var agendaScrollToNow by remember { mutableStateOf(true) }
     val calendarListState = rememberLazyListState()
     var calendarScrollToNow by remember { mutableStateOf(true) }
+
+    // Opens the Map tab, with the session's venue pin selected when a session is given.
+    val navigateToMap: (ConferenceSession?) -> Unit = { session ->
+        if (session != null) {
+            val targetGroup = uiState.locationGroups.firstOrNull { group ->
+                group.sessions.any { it.id == session.id }
+            }
+            if (targetGroup != null) {
+                viewModel.selectLocationPin(targetGroup)
+            }
+        }
+        selectedTab = NavigationTab.MAP
+    }
 
     // Back handling: pop back to Agenda screen if on sub-screens
     BackHandler(enabled = selectedTab != NavigationTab.AGENDA || uiState.selectedLocationPin != null) {
@@ -200,17 +214,7 @@ fun ConferenceApp(
                         listState = agendaListState,
                         scrollToNow = agendaScrollToNow,
                         onScrollToNowChange = { agendaScrollToNow = it },
-                        onNavigateToMap = { session ->
-                            if (session != null) {
-                                val targetGroup = uiState.locationGroups.firstOrNull { group ->
-                                    group.sessions.any { it.id == session.id }
-                                }
-                                if (targetGroup != null) {
-                                    viewModel.selectLocationPin(targetGroup)
-                                }
-                            }
-                            selectedTab = NavigationTab.MAP
-                        },
+                        onNavigateToMap = navigateToMap,
                         onNavigateToConfigure = { sessionId ->
                             editOriginTab = NavigationTab.AGENDA
                             editingSessionId = sessionId
@@ -224,7 +228,8 @@ fun ConferenceApp(
                         viewModel = viewModel,
                         listState = calendarListState,
                         scrollToNow = calendarScrollToNow,
-                        onScrolledToNow = { calendarScrollToNow = false },
+                        onScrollToNowChange = { calendarScrollToNow = it },
+                        onNavigateToMap = navigateToMap,
                         onNavigateToConfigure = { sessionId ->
                             editOriginTab = NavigationTab.CALENDAR
                             editingSessionId = sessionId

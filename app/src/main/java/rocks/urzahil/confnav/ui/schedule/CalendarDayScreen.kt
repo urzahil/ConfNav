@@ -39,10 +39,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import rocks.urzahil.confnav.data.model.ConferenceSession
 import rocks.urzahil.confnav.ui.AgendaLogic
 import rocks.urzahil.confnav.ui.CalendarSlot
 import rocks.urzahil.confnav.ui.ConferenceViewModel
 import rocks.urzahil.confnav.ui.DayFilter
+import rocks.urzahil.confnav.ui.components.NextEventPill
 import rocks.urzahil.confnav.ui.components.PinColorHelper
 import java.time.LocalDate
 import java.time.LocalTime
@@ -53,7 +55,7 @@ private val TIME_GUTTER_WIDTH = 48.dp
 private const val INDENT_FRACTION = 0.12f // horizontal cascade step for overlapping sessions
 
 /**
- * All conference days on one continuous hourly time grid, like a calendar app. Each day
+ * The conference days picked in the day filter on one continuous hourly time grid, like a calendar app. Each day
  * starts with the same date pill as the Agenda, which sticks to the top while scrolling
  * through that day. Overlapping sessions are drawn cascaded on top of each other so every
  * one of them stays visible.
@@ -62,15 +64,16 @@ private const val INDENT_FRACTION = 0.12f // horizontal cascade step for overlap
 @Composable
 fun CalendarDayScreen(
     viewModel: ConferenceViewModel,
+    onNavigateToMap: (ConferenceSession?) -> Unit,
     onNavigateToConfigure: (Long?) -> Unit,
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
     scrollToNow: Boolean = true,
-    onScrolledToNow: () -> Unit = {}
+    onScrollToNowChange: (Boolean) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val days = remember(uiState.sessions) {
-        uiState.sessions
+    val days = remember(uiState.filteredSessions) {
+        uiState.filteredSessions
             .groupBy { it.date }
             .toSortedMap()
             .map { (date, sessions) -> date to AgendaLogic.layoutCalendarDay(sessions) }
@@ -79,10 +82,10 @@ fun CalendarDayScreen(
     val today = LocalDate.now().toString()
     val density = LocalDensity.current
 
-    // When opened from the navigation bar (not when coming back from editing a session): jump
-    // to the current time when today is a conference day, else to the next conference day;
-    // before or after the conference, start at the top.
-    LaunchedEffect(scrollToNow, days.isNotEmpty()) {
+    // When opened from the navigation bar or on picking a filter (not when coming back from
+    // editing a session): jump to the current time when today is shown, else to the next
+    // shown day; if every shown day is in the past or the future, start at the top.
+    LaunchedEffect(scrollToNow, uiState.selectedFilter, days.isNotEmpty()) {
         if (!scrollToNow || days.isEmpty()) return@LaunchedEffect
         val dayIndex = days.indexOfFirst { (date, _) -> date >= today }
         when {
@@ -97,43 +100,70 @@ fun CalendarDayScreen(
             else -> listState.scrollToItem(dayIndex * 2)
         }
         // Only after scrolling: this changes the effect's key, which would cancel it.
-        onScrolledToNow()
+        onScrollToNowChange(false)
     }
 
-    if (days.isEmpty()) {
-        EmptyScheduleView(
-            filter = DayFilter.All,
-            onResetFilter = {},
-            onAddSession = { onNavigateToConfigure(null) }
-        )
-        return
-    }
-
-    LazyColumn(
-        state = listState,
+    Column(
         modifier = modifier
             .fillMaxSize()
-            .testTag("calendar_screen"),
-        contentPadding = PaddingValues(bottom = 24.dp)
+            .testTag("calendar_screen")
     ) {
-        days.forEach { (date, slots) ->
-            stickyHeader(key = "header_$date") {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface)
-                        .padding(horizontal = 16.dp, vertical = 4.dp)
-                ) {
-                    DayDateHeader(date = date)
+        // Top Bar with Filter Chips & Next Event Pill (matching Agenda and Map)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+                .padding(bottom = 6.dp)
+        ) {
+            DayFilterChipsRow(
+                filters = uiState.availableFilters,
+                selectedFilter = uiState.selectedFilter,
+                onFilterSelected = {
+                    viewModel.setDayFilter(it)
+                    onScrollToNowChange(true)
                 }
-            }
-            item(key = "grid_$date") {
-                CalendarDayGrid(
-                    slots = slots,
-                    isToday = date == today,
-                    onSessionClick = { onNavigateToConfigure(it) },
-                    modifier = Modifier.testTag("calendar_grid_$date")
+            )
+
+            if (uiState.nextSession != null) {
+                NextEventPill(
+                    session = uiState.nextSession,
+                    onNavigateToMap = { session -> onNavigateToMap(session) }
                 )
+            }
+        }
+
+        if (days.isEmpty()) {
+            EmptyScheduleView(
+                filter = uiState.selectedFilter,
+                onResetFilter = { viewModel.setDayFilter(DayFilter.All) },
+                onAddSession = { onNavigateToConfigure(null) }
+            )
+        } else {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 24.dp)
+            ) {
+                days.forEach { (date, slots) ->
+                    stickyHeader(key = "header_$date") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(horizontal = 16.dp, vertical = 4.dp)
+                        ) {
+                            DayDateHeader(date = date)
+                        }
+                    }
+                    item(key = "grid_$date") {
+                        CalendarDayGrid(
+                            slots = slots,
+                            isToday = date == today,
+                            onSessionClick = { onNavigateToConfigure(it) },
+                            modifier = Modifier.testTag("calendar_grid_$date")
+                        )
+                    }
+                }
             }
         }
     }
