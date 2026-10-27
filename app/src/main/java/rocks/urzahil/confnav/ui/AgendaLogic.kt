@@ -45,6 +45,17 @@ object AgendaLogic {
             .filter { isOngoingOrUpcoming(it, now) }
             .minByOrNull { startOf(it) ?: LocalDateTime.MAX }
 
+    /** The sessions matching the day filter, limited to starred ones when [starredOnly] is set. */
+    fun filterSessions(
+        sessions: List<ConferenceSession>,
+        filter: DayFilter,
+        starredOnly: Boolean
+    ): List<ConferenceSession> =
+        sessions.filter { session ->
+            (filter !is DayFilter.SpecificDate || session.date == filter.date) &&
+                    (!starredOnly || session.starred)
+        }
+
     /** Identity used to avoid re-adding the same session when importing on top of an agenda. */
     fun duplicateKey(session: ConferenceSession): String =
         listOf(

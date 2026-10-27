@@ -2,6 +2,7 @@ package rocks.urzahil.confnav.ui.schedule
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -31,63 +33,98 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import rocks.urzahil.confnav.ui.DayFilter
+import rocks.urzahil.confnav.ui.components.StarGold
 import rocks.urzahil.confnav.ui.icons.filled.CalendarMonth
+import rocks.urzahil.confnav.ui.icons.filled.StarBorder
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+/**
+ * The starred-only toggle, pinned at the start, followed by the day chips, which scroll
+ * horizontally underneath it when there are many days.
+ */
 @Composable
 fun DayFilterChipsRow(
     filters: List<DayFilter>,
     selectedFilter: DayFilter,
     onFilterSelected: (DayFilter) -> Unit,
+    starredOnly: Boolean,
+    onStarredOnlyChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LazyRow(
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 2.dp)
-            .testTag("day_filter_row"),
+            .padding(start = 16.dp, top = 2.dp, bottom = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        items(filters) { filter ->
-            val isSelected = when {
-                filter is DayFilter.All && selectedFilter is DayFilter.All -> true
-                filter is DayFilter.SpecificDate && selectedFilter is DayFilter.SpecificDate ->
-                    filter.date == selectedFilter.date
+        FilterChip(
+            selected = starredOnly,
+            onClick = { onStarredOnlyChange(!starredOnly) },
+            label = {
+                Icon(
+                    imageVector = if (starredOnly) Icons.Default.Star else Icons.Default.StarBorder,
+                    contentDescription = if (starredOnly) "Show all sessions" else "Show starred sessions only",
+                    tint = if (starredOnly) StarGold else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+            },
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            ),
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.testTag("filter_chip_starred")
+        )
 
-                else -> false
-            }
+        LazyRow(
+            modifier = Modifier
+                .weight(1f)
+                .testTag("day_filter_row"),
+            contentPadding = PaddingValues(end = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items(filters) { filter ->
+                val isSelected = when {
+                    filter is DayFilter.All && selectedFilter is DayFilter.All -> true
+                    filter is DayFilter.SpecificDate && selectedFilter is DayFilter.SpecificDate ->
+                        filter.date == selectedFilter.date
 
-            FilterChip(
-                selected = isSelected,
-                onClick = { onFilterSelected(filter) },
-                label = {
-                    Text(
-                        text = filter.label,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                    )
-                },
-                leadingIcon = if (isSelected) {
-                    {
-                        Icon(
-                            imageVector = Icons.Default.CalendarMonth,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp)
+                    else -> false
+                }
+
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { onFilterSelected(filter) },
+                    label = {
+                        Text(
+                            text = filter.label,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                         )
-                    }
-                } else null,
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                ),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier
-                    .testTag("filter_chip_${filter.label.replace(" ", "_")}")
-            )
+                    },
+                    leadingIcon = if (isSelected) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.CalendarMonth,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    } else null,
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .testTag("filter_chip_${filter.label.replace(" ", "_")}")
+                )
+            }
         }
     }
 }
@@ -133,7 +170,9 @@ fun DayDateHeader(date: String) {
 @Composable
 fun EmptyScheduleView(
     filter: DayFilter,
+    starredOnly: Boolean,
     onResetFilter: () -> Unit,
+    onShowAllSessions: () -> Unit,
     onAddSession: () -> Unit
 ) {
     Box(
@@ -154,23 +193,33 @@ fun EmptyScheduleView(
             )
 
             Text(
-                text = if (filter is DayFilter.All) "No sessions scheduled yet" else "No sessions for ${filter.label}",
+                text = when {
+                    starredOnly && filter is DayFilter.All -> "No starred sessions"
+                    starredOnly -> "No starred sessions for ${filter.label}"
+                    filter is DayFilter.All -> "No sessions scheduled yet"
+                    else -> "No sessions for ${filter.label}"
+                },
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
 
             Text(
-                text = if (filter is DayFilter.All)
-                    "Get started by adding conference sessions to your agenda."
-                else
-                    "Try switching the filter to All Days or add a new session.",
+                text = when {
+                    starredOnly -> "Star sessions in the Agenda to see them here, or show all sessions."
+                    filter is DayFilter.All -> "Get started by adding conference sessions to your agenda."
+                    else -> "Try switching the filter to All Days or add a new session."
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (filter !is DayFilter.All) {
+                if (starredOnly) {
+                    OutlinedButton(onClick = onShowAllSessions) {
+                        Text("Show All Sessions")
+                    }
+                } else if (filter !is DayFilter.All) {
                     OutlinedButton(onClick = onResetFilter) {
                         Text("Show All Days")
                     }

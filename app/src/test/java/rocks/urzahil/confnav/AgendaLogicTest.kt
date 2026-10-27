@@ -2,6 +2,7 @@ package rocks.urzahil.confnav
 
 import rocks.urzahil.confnav.data.model.ConferenceSession
 import rocks.urzahil.confnav.ui.AgendaLogic
+import rocks.urzahil.confnav.ui.DayFilter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -77,6 +78,23 @@ class AgendaLogicTest {
             .associate { it.session.id to it.column }
 
         assertEquals(mapOf(1L to 0, 2L to 2, 3L to 1, 4L to 0), columns)
+    }
+
+    @Test
+    fun `starred only filter combines with the day filter`() {
+        val day1 = session(1, "2026-10-05", "09:00", "10:00").copy(starred = true)
+        val day1Plain = session(2, "2026-10-05", "11:00", "12:00")
+        val day2 = session(3, "2026-10-06", "09:00", "10:00").copy(starred = true)
+        val all = listOf(day1, day1Plain, day2)
+        val oct5 = DayFilter.SpecificDate("2026-10-05", "Oct 5")
+
+        fun ids(filter: DayFilter, starredOnly: Boolean) =
+            AgendaLogic.filterSessions(all, filter, starredOnly).map { it.id }
+
+        assertEquals(listOf(1L, 2L, 3L), ids(DayFilter.All, false))
+        assertEquals(listOf(1L, 3L), ids(DayFilter.All, true))
+        assertEquals(listOf(1L, 2L), ids(oct5, false))
+        assertEquals(listOf(1L), ids(oct5, true))
     }
 
     @Test

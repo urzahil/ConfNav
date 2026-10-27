@@ -248,7 +248,9 @@ fun ConferenceMapScreen(
             DayFilterChipsRow(
                 filters = uiState.availableFilters,
                 selectedFilter = uiState.selectedFilter,
-                onFilterSelected = { viewModel.setDayFilter(it) }
+                onFilterSelected = { viewModel.setDayFilter(it) },
+                starredOnly = uiState.starredOnly,
+                onStarredOnlyChange = { viewModel.setStarredOnly(it) }
             )
 
             // Next Event Pill with "Directions"
