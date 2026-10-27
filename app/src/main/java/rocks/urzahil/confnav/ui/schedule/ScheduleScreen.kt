@@ -77,7 +77,7 @@ fun ScheduleScreen(
 
     // Auto-scroll to current day (or top of list if current day is out of range) when asked to:
     // on opening from the navigation bar, on returning to the foreground, or on picking a filter.
-    LaunchedEffect(scrollToNow, uiState.selectedFilter, groupedByDate.isNotEmpty()) {
+    LaunchedEffect(scrollToNow, uiState.selectedFilter, uiState.starredOnly, groupedByDate.isNotEmpty()) {
         if (!scrollToNow || groupedByDate.isEmpty()) return@LaunchedEffect
         if (uiState.selectedFilter is DayFilter.All) {
             listState.scrollToItem(calculateTargetIndex(groupedByDate))
@@ -108,6 +108,11 @@ fun ScheduleScreen(
                     onFilterSelected = {
                         viewModel.setDayFilter(it)
                         onScrollToNowChange(true)
+                    },
+                    starredOnly = uiState.starredOnly,
+                    onStarredOnlyChange = {
+                        viewModel.setStarredOnly(it)
+                        onScrollToNowChange(true)
                     }
                 )
 
@@ -126,7 +131,9 @@ fun ScheduleScreen(
             if (uiState.filteredSessions.isEmpty()) {
                 EmptyScheduleView(
                     filter = uiState.selectedFilter,
+                    starredOnly = uiState.starredOnly,
                     onResetFilter = { viewModel.setDayFilter(DayFilter.All) },
+                    onShowAllSessions = { viewModel.setStarredOnly(false) },
                     onAddSession = { onNavigateToConfigure(null) }
                 )
             } else {

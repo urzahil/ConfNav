@@ -87,7 +87,7 @@ fun CalendarDayScreen(
     // When opened from the navigation bar or on picking a filter (not when coming back from
     // editing a session): jump to the current time when today is shown, else to the next
     // shown day; if every shown day is in the past or the future, start at the top.
-    LaunchedEffect(scrollToNow, uiState.selectedFilter, days.isNotEmpty()) {
+    LaunchedEffect(scrollToNow, uiState.selectedFilter, uiState.starredOnly, days.isNotEmpty()) {
         if (!scrollToNow || days.isEmpty()) return@LaunchedEffect
         val dayIndex = days.indexOfFirst { (date, _) -> date >= today }
         when {
@@ -123,6 +123,11 @@ fun CalendarDayScreen(
                 onFilterSelected = {
                     viewModel.setDayFilter(it)
                     onScrollToNowChange(true)
+                },
+                starredOnly = uiState.starredOnly,
+                onStarredOnlyChange = {
+                    viewModel.setStarredOnly(it)
+                    onScrollToNowChange(true)
                 }
             )
 
@@ -137,7 +142,9 @@ fun CalendarDayScreen(
         if (days.isEmpty()) {
             EmptyScheduleView(
                 filter = uiState.selectedFilter,
+                starredOnly = uiState.starredOnly,
                 onResetFilter = { viewModel.setDayFilter(DayFilter.All) },
+                onShowAllSessions = { viewModel.setStarredOnly(false) },
                 onAddSession = { onNavigateToConfigure(null) }
             )
         } else {

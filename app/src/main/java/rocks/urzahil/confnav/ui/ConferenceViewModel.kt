@@ -41,6 +41,7 @@ data class ConferenceUiState(
     val selectedLocationPin: LocationGroup? = null,
     val nextSession: ConferenceSession? = null,
     val selectedFilter: DayFilter = DayFilter.All,
+    val starredOnly: Boolean = false,
     val availableFilters: List<DayFilter> = listOf(DayFilter.All),
     val locationSuggestions: List<LocationSuggestion> = emptyList(),
     val isSearchingLocations: Boolean = false
@@ -60,6 +61,7 @@ class ConferenceViewModel(application: Application) : AndroidViewModel(applicati
     private val locationSearchHelper: LocationSearchHelper
 
     private val selectedFilter = MutableStateFlow<DayFilter>(DayFilter.All)
+    private val starredOnly = MutableStateFlow(false)
     private val selectedLocationPin = MutableStateFlow<LocationGroup?>(null)
     private val locationSearch = MutableStateFlow(LocationSearchState())
 
@@ -74,12 +76,12 @@ class ConferenceViewModel(application: Application) : AndroidViewModel(applicati
 
         uiState = combine(
             repository.allSessions,
-            selectedFilter,
+            combine(selectedFilter, starredOnly, ::Pair),
             selectedLocationPin,
             minuteTicker(),
             locationSearch
-        ) { sessions, filter, selectedPin, now, search ->
-            buildState(sessions, filter, selectedPin, now, search)
+        ) { sessions, (filter, onlyStarred), selectedPin, now, search ->
+            buildState(sessions, filter, onlyStarred, selectedPin, now, search)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -100,6 +102,7 @@ class ConferenceViewModel(application: Application) : AndroidViewModel(applicati
     private fun buildState(
         sessions: List<ConferenceSession>,
         filter: DayFilter,
+        onlyStarred: Boolean,
         selectedPin: LocationGroup?,
         now: LocalDateTime,
         search: LocationSearchState
@@ -109,10 +112,7 @@ class ConferenceViewModel(application: Application) : AndroidViewModel(applicati
             availableFilters.add(DayFilter.SpecificDate(date, formatFriendlyDate(date)))
         }
 
-        val filtered = when (filter) {
-            is DayFilter.All -> sessions
-            is DayFilter.SpecificDate -> sessions.filter { it.date == filter.date }
-        }
+        val filtered = AgendaLogic.filterSessions(sessions, filter, onlyStarred)
 
         // The map only shows sessions that are ongoing or still to come.
         val locationGroups = repository.groupSessionsByLocation(
@@ -129,6 +129,7 @@ class ConferenceViewModel(application: Application) : AndroidViewModel(applicati
             selectedLocationPin = activePin,
             nextSession = AgendaLogic.nextSession(sessions, now),
             selectedFilter = filter,
+            starredOnly = onlyStarred,
             availableFilters = availableFilters,
             locationSuggestions = search.suggestions,
             isSearchingLocations = search.isSearching
@@ -137,6 +138,10 @@ class ConferenceViewModel(application: Application) : AndroidViewModel(applicati
 
     fun setDayFilter(filter: DayFilter) {
         selectedFilter.value = filter
+    }
+
+    fun setStarredOnly(enabled: Boolean) {
+        starredOnly.value = enabled
     }
 
     fun selectLocationPin(pin: LocationGroup?) {
