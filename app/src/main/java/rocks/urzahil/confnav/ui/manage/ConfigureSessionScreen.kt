@@ -693,7 +693,34 @@ fun ConfigureSessionScreen(
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(14.dp)
                             ) {
-                                Text("Cancel Edit")
+                                Text("Cancel")
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    sessionToDelete = ConferenceSession(
+                                        id = currentId,
+                                        title = title.trim().ifBlank { "this session" },
+                                        speaker = speaker,
+                                        date = selectedDate,
+                                        startTime = startTime,
+                                        endTime = endTime,
+                                        locationName = locationName,
+                                        address = locationAddress,
+                                        latitude = latitude,
+                                        longitude = longitude,
+                                        colorHex = ""
+                                    )
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("btn_delete_session"),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Text("Delete")
                             }
                         }
 
@@ -786,7 +813,7 @@ fun ConfigureSessionScreen(
                             Icon(Icons.Default.Check, contentDescription = null)
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (currentId != 0L) "Update Session" else "Save Session",
+                                text = "Save",
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -899,6 +926,12 @@ fun ConfigureSessionScreen(
                     onClick = {
                         viewModel.deleteSession(toDelete.id)
                         sessionToDelete = null
+                        if (toDelete.id == currentId) {
+                            // Deleted from the edit form: leave the form like Cancel does.
+                            clearForm()
+                            onEditCancelled()
+                            selectedTab = 1
+                        }
                     }
                 ) {
                     Text("Delete", color = MaterialTheme.colorScheme.error)
