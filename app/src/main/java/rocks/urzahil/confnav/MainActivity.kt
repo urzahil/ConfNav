@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -38,6 +40,7 @@ import rocks.urzahil.confnav.ui.icons.outlined.EditCalendar
 import rocks.urzahil.confnav.ui.icons.outlined.Map
 import rocks.urzahil.confnav.ui.manage.ConfigureSessionScreen
 import rocks.urzahil.confnav.ui.map.ConferenceMapScreen
+import rocks.urzahil.confnav.ui.schedule.CalendarDayScreen
 import rocks.urzahil.confnav.ui.schedule.ScheduleScreen
 import rocks.urzahil.confnav.ui.theme.ConfNavTheme
 
@@ -55,6 +58,7 @@ class MainActivity : ComponentActivity() {
 
 enum class NavigationTab(val title: String) {
     AGENDA("Agenda"),
+    CALENDAR("Calendar"),
     MAP("Map"),
     CONFIGURE("Configure");
 }
@@ -106,7 +110,26 @@ fun ConferenceApp(
                     modifier = Modifier.testTag("nav_tab_schedule")
                 )
 
-                // Tab 2: Map
+                // Tab 2: Calendar day grid
+                NavigationBarItem(
+                    selected = selectedTab == NavigationTab.CALENDAR,
+                    onClick = { selectedTab = NavigationTab.CALENDAR },
+                    icon = {
+                        Icon(
+                            imageVector = if (selectedTab == NavigationTab.CALENDAR) Icons.Filled.DateRange else Icons.Outlined.DateRange,
+                            contentDescription = "Calendar"
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = NavigationTab.CALENDAR.title,
+                            fontWeight = if (selectedTab == NavigationTab.CALENDAR) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
+                    modifier = Modifier.testTag("nav_tab_calendar")
+                )
+
+                // Tab 3: Map
                 NavigationBarItem(
                     selected = selectedTab == NavigationTab.MAP,
                     onClick = { selectedTab = NavigationTab.MAP },
@@ -125,7 +148,7 @@ fun ConferenceApp(
                     modifier = Modifier.testTag("nav_tab_map")
                 )
 
-                // Tab 3: Configure / Manage
+                // Tab 4: Configure / Manage
                 NavigationBarItem(
                     selected = selectedTab == NavigationTab.CONFIGURE,
                     onClick = {
@@ -174,6 +197,17 @@ fun ConferenceApp(
                         },
                         onNavigateToConfigure = { sessionId ->
                             editOriginTab = NavigationTab.AGENDA
+                            editingSessionId = sessionId
+                            selectedTab = NavigationTab.CONFIGURE
+                        }
+                    )
+                }
+
+                NavigationTab.CALENDAR -> {
+                    CalendarDayScreen(
+                        viewModel = viewModel,
+                        onNavigateToConfigure = { sessionId ->
+                            editOriginTab = NavigationTab.CALENDAR
                             editingSessionId = sessionId
                             selectedTab = NavigationTab.CONFIGURE
                         }
