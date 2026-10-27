@@ -27,25 +27,25 @@ ALTINATE = "Via Altinate 71, 35121 Padova PD"
 BO = "Via VIII Febbraio 2, 35122 Padova PD"
 LOCATIONS = {
     # Centro Altinate
-    "acquario | centro altinate": ("Centro Altinate – Acquario", ALTINATE, 45.408545, 11.882156, "#7E2910", "Acquario"),
-    "agora' | centro altinate": ("Centro Altinate – Agorà", ALTINATE, 45.408688, 11.882018, "#AC3816", "Agorà"),
-    "auditorium | centro altinate": ("Centro Altinate – Auditorium", ALTINATE, 45.408633, 11.881794, "#D9471C", "Auditorium"),
-    "foyer | centro altinate": ("Centro Altinate – Foyer", ALTINATE, 45.408457, 11.881794, "#E66741", "Foyer"),
-    "spazio 35 | centro altinate": ("Centro Altinate – Spazio 35", ALTINATE, 45.408402, 11.882018, "#EC8B6E", "Spazio 35"),
+    "acquario | centro altinate": ("Centro Altinate – Acquario", ALTINATE, 45.408545, 11.882156, "#4363D8", "Acquario"),
+    "agora' | centro altinate": ("Centro Altinate – Agorà", ALTINATE, 45.408688, 11.882018, "#E6194B", "Agorà"),
+    "auditorium | centro altinate": ("Centro Altinate – Auditorium", ALTINATE, 45.408633, 11.881794, "#FFE119", "Auditorium"),
+    "foyer | centro altinate": ("Centro Altinate – Foyer", ALTINATE, 45.408457, 11.881794, "#3CB44B", "Foyer"),
+    "spazio 35 | centro altinate": ("Centro Altinate – Spazio 35", ALTINATE, 45.408402, 11.882018, "#F58231", "Spazio 35"),
     # Palazzo del Bo
-    "aula e | palazzo del bo": ("Palazzo del Bo – Aula E", BO, 45.4067, 11.8776, "#0C8379", "Aula E"),
-    "aula l | palazzo del bo": ("Palazzo del Bo – Aula L", BO, 45.40685, 11.8774, "#11C2B2", "Aula L"),
-    "aula magna | palazzo del bo": ("Palazzo del Bo – Aula Magna", BO, 45.4067, 11.8772, "#2AECDB", "Aula Magna"),
-    "aula nievo | palazzo del bo": ("Palazzo del Bo – Aula Nievo", BO, 45.40655, 11.8774, "#69F2E6", "Aula Nievo"),
+    "aula e | palazzo del bo": ("Palazzo del Bo – Aula E", BO, 45.4067, 11.8776, "#911EB4", "Aula E"),
+    "aula l | palazzo del bo": ("Palazzo del Bo – Aula L", BO, 45.40685, 11.8774, "#42D4F4", "Aula L"),
+    "aula magna | palazzo del bo": ("Palazzo del Bo – Aula Magna", BO, 45.4067, 11.8772, "#F032E6", "Aula Magna"),
+    "aula nievo | palazzo del bo": ("Palazzo del Bo – Aula Nievo", BO, 45.40655, 11.8774, "#BFEF45", "Aula Nievo"),
     # Caffè Pedrocchi
-    "sala verde | caffè pedrocchi": ("Caffè Pedrocchi – Sala Verde", "Via VIII Febbraio 15, 35122 Padova PD", 45.4077, 11.8771, "#883F07", "Sala Verde"),
+    "sala verde | caffè pedrocchi": ("Caffè Pedrocchi – Sala Verde", "Via VIII Febbraio 15, 35122 Padova PD", 45.4077, 11.8771, "#9A6324", "Sala Verde"),
     # Single-room venues
-    "liston": ("Liston", "Via VIII Febbraio 2 (di fronte a Palazzo del Bo), 35122 Padova PD", 45.4072, 11.8772, "#7C3AED", None),
-    "orto botanico dell'università di padova": ("Orto botanico di Padova", "Via Orto Botanico 15, 35123 Padova PD", 45.3986, 11.8809, "#16A34A", None),
-    "mnu museo della natura e dell'uomo dell'università di padova": ("Museo della Natura e dell'Uomo", "Corso Giuseppe Garibaldi 39, 35121 Padova PD", 45.412, 11.8783, "#2563EB", None),
-    "libreria feltrinelli": ("Libreria Feltrinelli", "Via San Francesco 7, 35121 Padova PD", 45.4062, 11.8779, "#DB2777", None),
-    "musme": ("MUSME - Museo di Storia della Medicina", "Via San Francesco 94, 35121 Padova PD", 45.4052, 11.8804, "#0891B2", None),
-    "dip. medicina | univ. di padova": ("Dipartimento di Medicina - Università di Padova", "Via Giustiniani 2, 35128 Padova PD", 45.4028, 11.887, "#65A30D", None),
+    "liston": ("Liston", "Via VIII Febbraio 2 (di fronte a Palazzo del Bo), 35122 Padova PD", 45.4072, 11.8772, "#000075", None),
+    "orto botanico dell'università di padova": ("Orto botanico di Padova", "Via Orto Botanico 15, 35123 Padova PD", 45.3986, 11.8809, "#469990", None),
+    "mnu museo della natura e dell'uomo dell'università di padova": ("Museo della Natura e dell'Uomo", "Corso Giuseppe Garibaldi 39, 35121 Padova PD", 45.412, 11.8783, "#800000", None),
+    "libreria feltrinelli": ("Libreria Feltrinelli", "Via San Francesco 7, 35121 Padova PD", 45.4062, 11.8779, "#FABED4", None),
+    "musme": ("MUSME - Museo di Storia della Medicina", "Via San Francesco 94, 35121 Padova PD", 45.4052, 11.8804, "#808000", None),
+    "dip. medicina | univ. di padova": ("Dipartimento di Medicina - Università di Padova", "Via Giustiniani 2, 35128 Padova PD", 45.4028, 11.887, "#808080", None),
 }
 
 
