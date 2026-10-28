@@ -1,4 +1,4 @@
-name: Build CICAP Fest converter (Windows exe)
+name: Build UKOUG converter (Windows exe)
 
 on:
   workflow_dispatch:
