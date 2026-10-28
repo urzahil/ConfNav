@@ -72,6 +72,8 @@ fun ConferenceApp(
     var selectedTab by remember { mutableStateOf(NavigationTab.AGENDA) }
     var editingSessionId by remember { mutableStateOf<Long?>(null) }
     var editOriginTab by remember { mutableStateOf(NavigationTab.CONFIGURE) }
+    // The Agenda or Calendar tab that opened the Map for a session, if any.
+    var mapOriginTab by remember { mutableStateOf<NavigationTab?>(null) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // Kept out here so the Agenda and Calendar keep their scroll position while a session is
     // being edited; they only jump to the current day/time when opened from the navigation bar.
@@ -90,12 +92,25 @@ fun ConferenceApp(
                 viewModel.selectLocationPin(targetGroup)
             }
         }
+        if (selectedTab == NavigationTab.AGENDA || selectedTab == NavigationTab.CALENDAR) {
+            mapOriginTab = selectedTab
+        }
         selectedTab = NavigationTab.MAP
+    }
+
+    // Leaves a Map opened from a session the way it came, keeping that tab's scroll position.
+    val returnFromMap: (NavigationTab) -> Unit = { origin ->
+        viewModel.selectLocationPin(null)
+        mapOriginTab = null
+        selectedTab = origin
     }
 
     // Back handling: pop back to Agenda screen if on sub-screens
     BackHandler(enabled = selectedTab != NavigationTab.AGENDA || uiState.selectedLocationPin != null) {
-        if (uiState.selectedLocationPin != null) {
+        val origin = mapOriginTab
+        if (selectedTab == NavigationTab.MAP && origin != null) {
+            returnFromMap(origin)
+        } else if (uiState.selectedLocationPin != null) {
             viewModel.selectLocationPin(null)
         } else if (selectedTab != NavigationTab.AGENDA) {
             selectedTab = NavigationTab.AGENDA
@@ -159,7 +174,10 @@ fun ConferenceApp(
                 // Tab 3: Map
                 NavigationBarItem(
                     selected = selectedTab == NavigationTab.MAP,
-                    onClick = { selectedTab = NavigationTab.MAP },
+                    onClick = {
+                        mapOriginTab = null
+                        selectedTab = NavigationTab.MAP
+                    },
                     icon = {
                         Icon(
                             imageVector = if (selectedTab == NavigationTab.MAP) Icons.Filled.Map else Icons.Outlined.Map,
@@ -245,6 +263,10 @@ fun ConferenceApp(
                             editOriginTab = NavigationTab.MAP
                             editingSessionId = sessionId
                             selectedTab = NavigationTab.CONFIGURE
+                        },
+                        onCloseLocationCard = {
+                            val origin = mapOriginTab
+                            if (origin != null) returnFromMap(origin) else viewModel.selectLocationPin(null)
                         }
                     )
                 }

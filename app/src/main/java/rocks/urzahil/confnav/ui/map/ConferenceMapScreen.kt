@@ -63,6 +63,7 @@ import kotlinx.coroutines.launch
 fun ConferenceMapScreen(
     viewModel: ConferenceViewModel,
     onNavigateToConfigure: (Long?) -> Unit,
+    onCloseLocationCard: () -> Unit = { viewModel.selectLocationPin(null) },
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -298,7 +299,7 @@ fun ConferenceMapScreen(
             if (selectedPin != null) {
                 LocationDetailsCard(
                     locationGroup = selectedPin,
-                    onClose = { viewModel.selectLocationPin(null) },
+                    onClose = onCloseLocationCard,
                     onOpenDirections = {
                         val first = selectedPin.sessions.firstOrNull()
                         if (first != null) {

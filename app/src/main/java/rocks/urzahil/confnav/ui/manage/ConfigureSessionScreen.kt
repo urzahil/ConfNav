@@ -1,6 +1,7 @@
 package rocks.urzahil.confnav.ui.manage
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -165,6 +166,18 @@ fun ConfigureSessionScreen(
         starred = session.starred
         locationQuery = session.locationName
         track = session.track
+    }
+
+    // Return to the screen that invoked this edit.
+    fun cancelEdit() {
+        clearForm()
+        onEditCancelled()
+        selectedTab = 1
+    }
+
+    // Swiping back out of an edit leaves the form like Cancel does.
+    BackHandler(enabled = currentId != 0L && selectedTab == 0) {
+        cancelEdit()
     }
 
     // JSON export / import (file pickers, add-or-replace dialog and result messages)
@@ -702,12 +715,7 @@ fun ConfigureSessionScreen(
                     ) {
                         if (currentId != 0L) {
                             OutlinedButton(
-                                onClick = {
-                                    // Return to the screen that invoked this edit.
-                                    clearForm()
-                                    onEditCancelled()
-                                    selectedTab = 1
-                                },
+                                onClick = { cancelEdit() },
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(14.dp)
                             ) {
