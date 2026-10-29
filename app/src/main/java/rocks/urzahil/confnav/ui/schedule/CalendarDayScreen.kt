@@ -84,9 +84,9 @@ fun CalendarDayScreen(
     val today = LocalDate.now().toString()
     val density = LocalDensity.current
 
-    // When opened from the navigation bar or on picking a filter (not when coming back from
-    // editing a session): jump to the current time when today is shown, else to the next
-    // shown day; if every shown day is in the past or the future, start at the top.
+    // When the tab is first opened or on picking a filter (coming back to the tab keeps its
+    // position): jump to the current time when today is shown, else to the next shown day;
+    // if every shown day is in the past or the future, start at the top.
     LaunchedEffect(scrollToNow, uiState.selectedFilter, uiState.starredOnly, days.isNotEmpty()) {
         if (!scrollToNow || days.isEmpty()) return@LaunchedEffect
         val dayIndex = days.indexOfFirst { (date, _) -> date >= today }

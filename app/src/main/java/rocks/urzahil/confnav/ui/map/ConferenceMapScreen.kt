@@ -24,6 +24,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -63,6 +64,8 @@ import kotlinx.coroutines.launch
 fun ConferenceMapScreen(
     viewModel: ConferenceViewModel,
     onNavigateToConfigure: (Long?) -> Unit,
+    savedCameraPosition: CameraPosition? = null,
+    onCameraPositionSaved: (CameraPosition) -> Unit = {},
     onCloseLocationCard: () -> Unit = { viewModel.selectLocationPin(null) },
     modifier: Modifier = Modifier
 ) {
@@ -85,7 +88,19 @@ fun ConferenceMapScreen(
     }
 
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(defaultCenter, 16.5f)
+        position = savedCameraPosition ?: CameraPosition.fromLatLngZoom(defaultCenter, 16.5f)
+    }
+    var isMapLoaded by remember { mutableStateOf(false) }
+    // The first time the Map is opened it fits all venues, unless it was opened on a session's pin.
+    var fitAllPending by remember {
+        mutableStateOf(savedCameraPosition == null && uiState.selectedLocationPin == null)
+    }
+
+    // Leaving the tab keeps the camera where it was, for coming back to it.
+    DisposableEffect(Unit) {
+        onDispose {
+            if (!fitAllPending) onCameraPositionSaved(cameraPositionState.position)
+        }
     }
 
     // Camera animation when selected pin changes
@@ -128,6 +143,13 @@ fun ConferenceMapScreen(
                     )
                 }
             }
+        }
+    }
+
+    LaunchedEffect(fitAllPending, isMapLoaded, uiState.locationGroups.isNotEmpty()) {
+        if (fitAllPending && isMapLoaded && uiState.locationGroups.isNotEmpty()) {
+            fitAllPins()
+            fitAllPending = false
         }
     }
 
@@ -200,6 +222,7 @@ fun ConferenceMapScreen(
                     mapToolbarEnabled = false
                 )
             },
+            onMapLoaded = { isMapLoaded = true },
             onMapClick = {
                 viewModel.selectLocationPin(null)
             }

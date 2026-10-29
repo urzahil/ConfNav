@@ -35,12 +35,14 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import rocks.urzahil.confnav.data.model.ConferenceSession
+import rocks.urzahil.confnav.data.model.SessionJsonHelper
 import rocks.urzahil.confnav.ui.ConferenceViewModel
 import rocks.urzahil.confnav.ui.DayFilter
 import rocks.urzahil.confnav.ui.components.NextEventPill
 import rocks.urzahil.confnav.ui.components.openDirections
 import rocks.urzahil.confnav.ui.icons.filled.Map
 import java.time.LocalDate
+import java.time.LocalTime
 
 @Composable
 fun ScheduleScreen(
@@ -75,8 +77,9 @@ fun ScheduleScreen(
 
     val groupedByDate = remember(uiState.filteredSessions) { uiState.filteredSessions.groupBy { it.date } }
 
-    // Auto-scroll to current day (or top of list if current day is out of range) when asked to:
-    // on opening from the navigation bar, on returning to the foreground, or on picking a filter.
+    // Auto-scroll to an hour before now on today, else to the next day (or top of list if the
+    // current day is out of range) when asked to:
+    // when the tab is first opened, on returning to the foreground, or on picking a filter.
     LaunchedEffect(scrollToNow, uiState.selectedFilter, uiState.starredOnly, groupedByDate.isNotEmpty()) {
         if (!scrollToNow || groupedByDate.isEmpty()) return@LaunchedEffect
         if (uiState.selectedFilter is DayFilter.All) {
@@ -207,7 +210,15 @@ private fun calculateTargetIndex(groupedByDate: Map<String, List<ConferenceSessi
     var currentIndex = 0
     for ((date, sessions) in groupedByDate) {
         if (date == targetDate) {
-            return currentIndex
+            if (date != actualTodayStr) return currentIndex
+            // Today: the first session starting no earlier than an hour ago, else the last one.
+            val now = LocalTime.now()
+            val fromMinute = now.hour * 60 + now.minute - 60
+            val sessionIndex = sessions.indexOfFirst { session ->
+                val start = SessionJsonHelper.parseTime(session.startTime) ?: return@indexOfFirst false
+                start.hour * 60 + start.minute >= fromMinute
+            }.takeIf { it != -1 } ?: (sessions.size - 1)
+            return currentIndex + 1 + sessionIndex
         }
         currentIndex += 1 + sessions.size // 1 for header + N for sessions
     }
