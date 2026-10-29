@@ -1,10 +1,13 @@
 package rocks.urzahil.confnav.ui.map
 
 import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import com.google.android.gms.tasks.CancellationTokenSource
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -46,6 +49,8 @@ import rocks.urzahil.confnav.ui.components.PinMarkerCanvas
 import rocks.urzahil.confnav.ui.components.openDirections
 import rocks.urzahil.confnav.ui.icons.filled.MyLocation
 import rocks.urzahil.confnav.ui.schedule.DayFilterChipsRow
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.CameraUpdate
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
@@ -60,6 +65,9 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.coroutines.resume
 
 @Composable
 fun ConferenceMapScreen(
@@ -96,6 +104,9 @@ fun ConferenceMapScreen(
     var fitAllPending by remember {
         mutableStateOf(savedCameraPosition == null && uiState.selectedLocationPin == null)
     }
+    // Whether the starting position on the first load is settled: the user's position, or the
+    // default when it is unavailable.
+    var startResolved by remember { mutableStateOf(!fitAllPending) }
 
     // Leaving the tab keeps the camera where it was, for coming back to it.
     DisposableEffect(Unit) {
@@ -122,7 +133,6 @@ fun ConferenceMapScreen(
     }
 
     // Function to re-center on all pins
-    // The re-center button animates; the first fit on opening the Map jumps straight there.
     suspend fun fitAllPins(animated: Boolean) {
         if (uiState.locationGroups.isEmpty()) return
         suspend fun moveTo(update: CameraUpdate) {
@@ -141,12 +151,10 @@ fun ConferenceMapScreen(
         }
     }
 
-    // The map stays covered until the first fit is applied, so it never shows the default camera.
-    val coverMap = fitAllPending && uiState.locationGroups.isNotEmpty()
-
-    LaunchedEffect(fitAllPending, isMapLoaded, uiState.locationGroups.isNotEmpty()) {
-        if (fitAllPending && isMapLoaded && uiState.locationGroups.isNotEmpty()) {
-            fitAllPins(animated = false)
+    // On the very first load the map starts at the user's position, then moves to fit all venues.
+    LaunchedEffect(startResolved, fitAllPending, isMapLoaded, uiState.locationGroups.isNotEmpty()) {
+        if (startResolved && fitAllPending && isMapLoaded && uiState.locationGroups.isNotEmpty()) {
+            fitAllPins(animated = true)
             fitAllPending = false
         }
     }
@@ -169,6 +177,16 @@ fun ConferenceMapScreen(
     ) { permissions ->
         hasLocationPermission = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
                 permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (!hasLocationPermission) startResolved = true
+    }
+
+    LaunchedEffect(hasLocationPermission) {
+        if (startResolved || !hasLocationPermission) return@LaunchedEffect
+        val position = withTimeoutOrNull(LOCATION_TIMEOUT_MS) { currentPosition(context) }
+        if (position != null && fitAllPending) {
+            cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(position, 16f))
+        }
+        startResolved = true
     }
 
     LaunchedEffect(Unit) {
@@ -257,14 +275,6 @@ fun ConferenceMapScreen(
             }
         }
 
-        if (coverMap) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface)
-            )
-        }
-
         // 2. Top Bar with Filter Chips & Next Event Pill
         Column(
             modifier = Modifier
@@ -344,3 +354,18 @@ fun ConferenceMapScreen(
     }
 }
 
+private const val LOCATION_TIMEOUT_MS = 3000L
+
+/** The device's current position, or null when it can't be determined. Needs location permission. */
+@SuppressLint("MissingPermission")
+private suspend fun currentPosition(context: Context): LatLng? =
+    suspendCancellableCoroutine { cont ->
+        val cancellation = CancellationTokenSource()
+        cont.invokeOnCancellation { cancellation.cancel() }
+        LocationServices.getFusedLocationProviderClient(context)
+            .getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cancellation.token)
+            .addOnCompleteListener { task ->
+                val location = if (task.isSuccessful) task.result else null
+                cont.resume(location?.let { LatLng(it.latitude, it.longitude) })
+            }
+    }
