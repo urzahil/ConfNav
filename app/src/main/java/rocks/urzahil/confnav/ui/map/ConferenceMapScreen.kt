@@ -51,7 +51,6 @@ import rocks.urzahil.confnav.ui.icons.filled.MyLocation
 import rocks.urzahil.confnav.ui.schedule.DayFilterChipsRow
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import com.google.android.gms.maps.CameraUpdate
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -133,28 +132,27 @@ fun ConferenceMapScreen(
     }
 
     // Function to re-center on all pins
-    suspend fun fitAllPins(animated: Boolean) {
+    suspend fun fitAllPins() {
         if (uiState.locationGroups.isEmpty()) return
-        suspend fun moveTo(update: CameraUpdate) {
-            if (animated) cameraPositionState.animate(update, 800)
-            else cameraPositionState.move(update)
-        }
         try {
             val builder = LatLngBounds.builder()
             uiState.locationGroups.forEach {
                 builder.include(LatLng(it.latitude, it.longitude))
             }
             val bounds = builder.build()
-            moveTo(CameraUpdateFactory.newLatLngBounds(bounds, 120))
+            cameraPositionState.animate(CameraUpdateFactory.newLatLngBounds(bounds, 120), 800)
         } catch (_: Exception) {
-            moveTo(CameraUpdateFactory.newLatLngZoom(defaultCenter, 16.2f))
+            cameraPositionState.animate(
+                CameraUpdateFactory.newLatLngZoom(defaultCenter, 16.2f),
+                800
+            )
         }
     }
 
     // On the very first load the map starts at the user's position, then moves to fit all venues.
     LaunchedEffect(startResolved, fitAllPending, isMapLoaded, uiState.locationGroups.isNotEmpty()) {
         if (startResolved && fitAllPending && isMapLoaded && uiState.locationGroups.isNotEmpty()) {
-            fitAllPins(animated = true)
+            fitAllPins()
             fitAllPending = false
         }
     }
@@ -311,7 +309,7 @@ fun ConferenceMapScreen(
 
         // 3. Floating Action Controls: Center on venues button at top right of the map
         FloatingActionButton(
-            onClick = { coroutineScope.launch { fitAllPins(animated = true) } },
+            onClick = { coroutineScope.launch { fitAllPins() } },
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.primary,
             modifier = Modifier
