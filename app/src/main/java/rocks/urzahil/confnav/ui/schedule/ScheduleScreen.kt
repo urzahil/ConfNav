@@ -76,7 +76,7 @@ fun ScheduleScreen(
     val groupedByDate = remember(uiState.filteredSessions) { uiState.filteredSessions.groupBy { it.date } }
 
     // Auto-scroll to current day (or top of list if current day is out of range) when asked to:
-    // on opening from the navigation bar, on returning to the foreground, or on picking a filter.
+    // when the tab is first opened, on returning to the foreground, or on picking a filter.
     LaunchedEffect(scrollToNow, uiState.selectedFilter, uiState.starredOnly, groupedByDate.isNotEmpty()) {
         if (!scrollToNow || groupedByDate.isEmpty()) return@LaunchedEffect
         if (uiState.selectedFilter is DayFilter.All) {

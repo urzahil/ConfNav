@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.android.gms.maps.model.CameraPosition
 import rocks.urzahil.confnav.data.model.ConferenceSession
 import rocks.urzahil.confnav.ui.ConferenceViewModel
 import rocks.urzahil.confnav.ui.icons.filled.CalendarMonth
@@ -75,12 +76,13 @@ fun ConferenceApp(
     // The Agenda or Calendar tab that opened the Map for a session, if any.
     var mapOriginTab by remember { mutableStateOf<NavigationTab?>(null) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    // Kept out here so the Agenda and Calendar keep their scroll position while a session is
-    // being edited; they only jump to the current day/time when opened from the navigation bar.
+    // Kept out here so the Agenda, Calendar and Map keep their position while another tab is
+    // shown; the lists only jump to today, and the Map only fits all venues, when first opened.
     val agendaListState = rememberLazyListState()
     var agendaScrollToNow by remember { mutableStateOf(true) }
     val calendarListState = rememberLazyListState()
     var calendarScrollToNow by remember { mutableStateOf(true) }
+    var mapCameraPosition by remember { mutableStateOf<CameraPosition?>(null) }
 
     // Opens the Map tab, with the session's venue pin selected when a session is given.
     val navigateToMap: (ConferenceSession?) -> Unit = { session ->
@@ -131,7 +133,6 @@ fun ConferenceApp(
                 NavigationBarItem(
                     selected = selectedTab == NavigationTab.AGENDA,
                     onClick = {
-                        if (selectedTab != NavigationTab.AGENDA) agendaScrollToNow = true
                         selectedTab = NavigationTab.AGENDA
                     },
                     icon = {
@@ -153,7 +154,6 @@ fun ConferenceApp(
                 NavigationBarItem(
                     selected = selectedTab == NavigationTab.CALENDAR,
                     onClick = {
-                        if (selectedTab != NavigationTab.CALENDAR) calendarScrollToNow = true
                         selectedTab = NavigationTab.CALENDAR
                     },
                     icon = {
@@ -259,6 +259,8 @@ fun ConferenceApp(
                 NavigationTab.MAP -> {
                     ConferenceMapScreen(
                         viewModel = viewModel,
+                        savedCameraPosition = mapCameraPosition,
+                        onCameraPositionSaved = { mapCameraPosition = it },
                         onNavigateToConfigure = { sessionId ->
                             editOriginTab = NavigationTab.MAP
                             editingSessionId = sessionId

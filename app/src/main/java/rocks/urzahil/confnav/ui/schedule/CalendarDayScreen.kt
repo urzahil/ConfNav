@@ -32,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -82,24 +81,17 @@ fun CalendarDayScreen(
             .filter { (_, slots) -> slots.isNotEmpty() }
     }
     val today = LocalDate.now().toString()
-    val density = LocalDensity.current
 
-    // When opened from the navigation bar or on picking a filter (not when coming back from
-    // editing a session): jump to the current time when today is shown, else to the next
-    // shown day; if every shown day is in the past or the future, start at the top.
+    // When the tab is first opened or on picking a filter (coming back to the tab keeps its
+    // position): jump to the top of today when today is shown, else to the next shown day;
+    // if every shown day is in the past or the future, start at the top.
     LaunchedEffect(scrollToNow, uiState.selectedFilter, uiState.starredOnly, days.isNotEmpty()) {
         if (!scrollToNow || days.isEmpty()) return@LaunchedEffect
         val dayIndex = days.indexOfFirst { (date, _) -> date >= today }
-        when {
-            today < days.first().first || dayIndex == -1 -> listState.scrollToItem(0)
-            days[dayIndex].first == today -> {
-                val now = LocalTime.now()
-                val offset = with(density) {
-                    minuteOffset(now.hour * 60 + now.minute - 60, firstHourOf(days[dayIndex].second)).roundToPx()
-                }
-                listState.scrollToItem(dayIndex * 2 + 1, offset.coerceAtLeast(0))
-            }
-            else -> listState.scrollToItem(dayIndex * 2)
+        if (today < days.first().first || dayIndex == -1) {
+            listState.scrollToItem(0)
+        } else {
+            listState.scrollToItem(dayIndex * 2)
         }
         // Only after scrolling: this changes the effect's key, which would cancel it.
         onScrollToNowChange(false)
