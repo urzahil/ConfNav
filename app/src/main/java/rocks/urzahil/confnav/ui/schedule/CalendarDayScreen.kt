@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import rocks.urzahil.confnav.data.model.ConferenceSession
 import rocks.urzahil.confnav.ui.AgendaLogic
@@ -315,7 +316,7 @@ private fun CalendarSessionBlock(
         } else {
             SessionTitleText(
                 session = session,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelLarge.copy(lineHeight = 16.sp),
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 maxLines = 2,
