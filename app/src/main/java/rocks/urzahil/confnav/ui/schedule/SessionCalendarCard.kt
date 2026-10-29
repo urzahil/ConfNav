@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import rocks.urzahil.confnav.data.model.ConferenceSession
 import rocks.urzahil.confnav.ui.components.PinColorHelper
 import rocks.urzahil.confnav.ui.components.SessionTitleText
@@ -161,7 +162,7 @@ fun SessionCalendarCard(
                     // Title
                     SessionTitleText(
                         session = session,
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.titleSmall.copy(lineHeight = 16.sp),
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
