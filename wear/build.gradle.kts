@@ -13,7 +13,7 @@ android {
         minSdk = 30
         targetSdk = 36
         // Phone versionCode + 1,000,000, so the phone and watch builds never share a code on Play.
-        versionCode = 1_000_013
+        versionCode = 1_000_014
         versionName = "1.11.2"
     }
 
