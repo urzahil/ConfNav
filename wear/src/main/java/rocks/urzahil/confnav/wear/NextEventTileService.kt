@@ -37,7 +37,7 @@ class NextEventTileService : Material3TileService(
         val sessions = AgendaStore.load(this@NextEventTileService)
         val slots = AgendaTimeline.build(sessions.orEmpty(), LocalDateTime.now(), MAX_SLOTS)
         return tile(
-            timeline = nextEventTimeline(slots, hasAgenda = !sessions.isNullOrEmpty()),
+            timeline = nextEventTimeline(slots, hasAgenda = sessions != null),
             // The timeline is exact; this only catches time zone changes and capped timelines.
             freshness = 1.hours
         )

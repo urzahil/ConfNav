@@ -28,8 +28,10 @@ object AgendaStore {
             return null
         }
         return try {
-            buffer.firstOrNull { it.uri.path == AgendaSync.PATH }
-                ?.let { AgendaSync.fromDataMap(DataMapItem.fromDataItem(it).dataMap) }
+            val item = buffer.firstOrNull { it.uri.path == AgendaSync.PATH }
+            Log.i(TAG, "Data layer holds ${buffer.count} item(s), agenda item found: ${item != null}")
+            item?.let { AgendaSync.fromDataMap(DataMapItem.fromDataItem(it).dataMap) }
+                ?.also { Log.i(TAG, "Decoded ${it.size} session(s) from the synced agenda") }
         } finally {
             buffer.release()
         }
