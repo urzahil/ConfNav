@@ -35,6 +35,7 @@ class WatchAgendaPublisher(context: Context) {
 
         try {
             Wearable.getDataClient(appContext).putDataItem(request).await()
+            Log.i(TAG, "Sent ${upcoming.size} of ${sessions.size} session(s) to the watch")
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
