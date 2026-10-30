@@ -1,4 +1,4 @@
-name: Build ConfNav Release APK
+name: Build ConfNav Release APK and AAB
 
 on:
   workflow_dispatch:
@@ -54,34 +54,47 @@ jobs:
           MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
         run: printf 'MAPS_API_KEY=%s\n' "$MAPS_API_KEY" > .env
 
-      - name: Build signed release APKs
+      - name: Build signed release APKs and AABs
         env:
           KEYSTORE_PATH: ${{ runner.temp }}/release.p12
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew clean testDebugUnitTest assembleRelease --no-daemon
+        run: ./gradlew clean testDebugUnitTest assembleRelease bundleRelease --no-daemon
 
-      - name: Prepare release APKs
+      - name: Prepare release packages
         run: |
           set -eu
-          mkdir -p dist
+          mkdir -p dist/apk dist/play
           apk_path="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
           test -n "$apk_path" || { echo "No release APK was produced"; exit 1; }
-          cp "$apk_path" dist/ConfNav-release.apk
-          test -s dist/ConfNav-release.apk
+          cp "$apk_path" dist/apk/ConfNav-release.apk
           wear_apk_path="$(find wear/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
           test -n "$wear_apk_path" || { echo "No Wear OS release APK was produced"; exit 1; }
-          cp "$wear_apk_path" dist/ConfNav-wear-release.apk
-          test -s dist/ConfNav-wear-release.apk
+          cp "$wear_apk_path" dist/apk/ConfNav-wear-release.apk
+          aab_path="$(find app/build/outputs/bundle/release -maxdepth 1 -type f -name '*.aab' -print -quit)"
+          test -n "$aab_path" || { echo "No release AAB was produced"; exit 1; }
+          cp "$aab_path" dist/play/ConfNav-release.aab
+          wear_aab_path="$(find wear/build/outputs/bundle/release -maxdepth 1 -type f -name '*.aab' -print -quit)"
+          test -n "$wear_aab_path" || { echo "No Wear OS release AAB was produced"; exit 1; }
+          cp "$wear_aab_path" dist/play/ConfNav-wear-release.aab
+          find dist -type f -empty -print -exec false {} +
+          (cd dist/apk && zip -j ../ConfNav-apk.zip *.apk)
+          (cd dist/play && zip -j ../ConfNav-google-play-aab.zip *.aab)
 
-      - name: Upload release APK artifact
+      - name: Upload APK package
         uses: actions/upload-artifact@v7
         with:
-          name: ConfNav-release-${{ github.run_number }}
-          path: |
-            dist/ConfNav-release.apk
-            dist/ConfNav-wear-release.apk
+          name: ConfNav-apk-${{ github.run_number }}
+          path: dist/ConfNav-apk.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload Google Play package
+        uses: actions/upload-artifact@v7
+        with:
+          name: ConfNav-google-play-${{ github.run_number }}
+          path: dist/ConfNav-google-play-aab.zip
           if-no-files-found: error
           retention-days: 30
 
@@ -91,7 +104,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
-            dist/ConfNav-release.apk \
-            dist/ConfNav-wear-release.apk \
+            dist/ConfNav-apk.zip \
+            dist/ConfNav-google-play-aab.zip \
             --generate-notes \
             --title "$GITHUB_REF_NAME"
