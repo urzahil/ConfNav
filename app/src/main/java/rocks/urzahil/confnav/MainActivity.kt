@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -43,6 +44,8 @@ import rocks.urzahil.confnav.ui.icons.outlined.EditCalendar
 import rocks.urzahil.confnav.ui.icons.outlined.Map
 import rocks.urzahil.confnav.ui.manage.ConfigureSessionScreen
 import rocks.urzahil.confnav.ui.map.ConferenceMapScreen
+import rocks.urzahil.confnav.ui.onboarding.OnboardingPreferences
+import rocks.urzahil.confnav.ui.onboarding.OnboardingScreen
 import rocks.urzahil.confnav.ui.schedule.CalendarDayScreen
 import rocks.urzahil.confnav.ui.schedule.ScheduleScreen
 import rocks.urzahil.confnav.ui.theme.ConfNavTheme
@@ -53,7 +56,19 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ConfNavTheme {
-                ConferenceApp()
+                var showOnboarding by rememberSaveable {
+                    mutableStateOf(!OnboardingPreferences.isCompleted(this))
+                }
+                if (showOnboarding) {
+                    OnboardingScreen(
+                        onFinished = {
+                            OnboardingPreferences.markCompleted(this)
+                            showOnboarding = false
+                        }
+                    )
+                } else {
+                    ConferenceApp()
+                }
             }
         }
     }
