@@ -1,15 +1,11 @@
 name: Release to Google Play closed testing
 
-# Bumps versionCode (phone and Wear OS), builds signed AABs, commits and tags the bump,
+# Bumps versionCode (phone and Wear OS; versionName is left as is), builds signed AABs, commits and tags the bump,
 # uploads both bundles to Google Play closed testing and publishes a GitHub Release.
 
 on:
   workflow_dispatch:
     inputs:
-      version_name:
-        description: 'New versionName (e.g. 1.11.3). Leave empty to keep the current one.'
-        required: false
-        default: ''
       phone_track:
         description: 'Play track for the phone bundle (alpha is the default closed testing track)'
         required: true
@@ -68,11 +64,10 @@ jobs:
             fi
           done
 
-      - name: Bump versionCode and versionName
+      # versionName is maintained by hand; only versionCode is bumped here.
+      - name: Bump versionCode
         id: version
         shell: bash
-        env:
-          VERSION_NAME_INPUT: ${{ inputs.version_name }}
         run: |
           set -euo pipefail
           current_code="$(sed -nE 's/^ *versionCode = ([0-9]+)$/\1/p' app/build.gradle.kts)"
@@ -83,12 +78,10 @@ jobs:
           # Keep the Wear OS offset documented in wear/build.gradle.kts.
           wear_code=$((new_code + 1000000))
           wear_code_literal="$(printf '%d' "$wear_code" | sed -E ':a;s/([0-9])([0-9]{3})($|_)/\1_\2\3/;ta')"
-          new_name="${VERSION_NAME_INPUT:-$current_name}"
-          [[ "$new_name" =~ ^[0-9A-Za-z._-]+$ ]] || { echo "::error::Invalid versionName: $new_name"; exit 1; }
+          new_name="$current_name"
 
           sed -i -E "s/^( *versionCode = )[0-9]+$/\1$new_code/" app/build.gradle.kts
           sed -i -E "s/^( *versionCode = )[0-9_]+$/\1$wear_code_literal/" wear/build.gradle.kts
-          sed -i -E "s/^( *versionName = )\"[^\"]+\"$/\1\"$new_name\"/" app/build.gradle.kts wear/build.gradle.kts
 
           grep -q "versionCode = $new_code$" app/build.gradle.kts
           grep -q "versionCode = $wear_code_literal$" wear/build.gradle.kts
