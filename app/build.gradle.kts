@@ -13,8 +13,8 @@ android {
         applicationId = "rocks.urzahil.confnav"
         minSdk = 24
         targetSdk = 36
-        versionCode = 11
-        versionName = "1.11.0"
+        versionCode = 12
+        versionName = "1.11.1"
 
         manifestPlaceholders["MAPS_API_KEY"] = ""
 
