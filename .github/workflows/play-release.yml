@@ -5,15 +5,6 @@ name: Release to Google Play closed testing
 
 on:
   workflow_dispatch:
-    inputs:
-      phone_track:
-        description: 'Play track for the phone bundle (alpha is the default closed testing track)'
-        required: true
-        default: 'alpha'
-      wear_track:
-        description: 'Play track for the Wear OS bundle'
-        required: true
-        default: 'wear:alpha'
 
 permissions:
   contents: write
@@ -154,7 +145,7 @@ jobs:
           releaseFiles: dist/play/ConfNav-release.aab
           mappingFile: app/build/outputs/mapping/release/mapping.txt
           releaseName: ${{ steps.version.outputs.name }} (${{ steps.version.outputs.code }})
-          track: ${{ inputs.phone_track }}
+          track: alpha
           status: completed
 
       - name: Upload Wear OS bundle to Google Play
@@ -165,7 +156,7 @@ jobs:
           releaseFiles: dist/play/ConfNav-wear-release.aab
           mappingFile: wear/build/outputs/mapping/release/mapping.txt
           releaseName: ${{ steps.version.outputs.name }} Wear (${{ steps.version.outputs.code }})
-          track: ${{ inputs.wear_track }}
+          track: wear:Alpha
           status: completed
 
       - name: Publish GitHub Release
