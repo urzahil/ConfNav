@@ -54,7 +54,7 @@ jobs:
           MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
         run: printf 'MAPS_API_KEY=%s\n' "$MAPS_API_KEY" > .env
 
-      - name: Build signed release APK
+      - name: Build signed release APKs
         env:
           KEYSTORE_PATH: ${{ runner.temp }}/release.p12
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
@@ -62,7 +62,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew clean testDebugUnitTest assembleRelease --no-daemon
 
-      - name: Prepare release APK
+      - name: Prepare release APKs
         run: |
           set -eu
           mkdir -p dist
@@ -70,12 +70,18 @@ jobs:
           test -n "$apk_path" || { echo "No release APK was produced"; exit 1; }
           cp "$apk_path" dist/ConfNav-release.apk
           test -s dist/ConfNav-release.apk
+          wear_apk_path="$(find wear/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$wear_apk_path" || { echo "No Wear OS release APK was produced"; exit 1; }
+          cp "$wear_apk_path" dist/ConfNav-wear-release.apk
+          test -s dist/ConfNav-wear-release.apk
 
       - name: Upload release APK artifact
         uses: actions/upload-artifact@v7
         with:
           name: ConfNav-release-${{ github.run_number }}
-          path: dist/ConfNav-release.apk
+          path: |
+            dist/ConfNav-release.apk
+            dist/ConfNav-wear-release.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -86,5 +92,6 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" \
             dist/ConfNav-release.apk \
+            dist/ConfNav-wear-release.apk \
             --generate-notes \
             --title "$GITHUB_REF_NAME"

@@ -25,3 +25,5 @@ dependencyResolutionManagement {
 rootProject.name = "ConfNav"
 
 include(":app")
+include(":shared")
+include(":wear")

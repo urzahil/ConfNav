@@ -13,10 +13,27 @@ Agendas are built in the companion **web builder** ([urzahil.github.io/ConfNav](
 - **Import / export**: load a JSON agenda either by merging it into your existing one or by replacing it. Re-importing the same file never creates duplicate sessions.
 - **Offline storage**: everything lives on the device, so your agenda works without a connection.
 
+### Wear OS watch
+- **Tile**: your next session in the app's colours: an UP NEXT (or NOW) label, the time, title, venue and speaker, and a Directions button in the session's pin colour. It switches to the next session on its own as the day goes on.
+- **Complication**: the start time and venue (or the session title) on your watch face. Tap it for directions.
+- **Directions**: opens walking navigation in Google Maps on the watch, or on your phone if the watch has no Maps.
+- The phone app sends your agenda to the watch over Bluetooth whenever it changes, so the watch works offline too. Open the phone app once after installing the watch app to send it.
+
 ### Web builder
 - Create and edit sessions with title, speaker, time, venue and colour, and star the ones that matter most.
 - Look up venue addresses and place them on a map.
 - Export the agenda as JSON for the app to import.
+
+## Installing on a watch
+
+The release workflow builds `ConfNav-release.apk` (phone) and `ConfNav-wear-release.apk` (watch). The watch app only receives the agenda when both apps come from the same build type: install both release APKs, or both debug builds (`./gradlew :app:installDebug` and `:wear:installDebug`).
+
+To sideload the watch APK:
+1. On the watch, open **Settings → System → About → Versions** and tap **Build number** seven times.
+2. In **Settings → Developer options**, turn on **ADB debugging** and **Wireless debugging**. Keep the watch on the same Wi-Fi as your computer.
+3. Tap **Pair new device**, then run `adb pair <ip>:<port>` with the code it shows.
+4. Run `adb connect <ip>:<port>` with the address on the Wireless debugging screen, then `adb install ConfNav-wear-release.apk`.
+5. Swipe to the end of your tiles, tap **+** and add **ConfNav: up next**. To add the complication, long-press the watch face, tap **Edit** and pick **ConfNav: next session** for a slot.
 
 ## Agenda JSON format
 

@@ -11,6 +11,7 @@ import rocks.urzahil.confnav.data.model.SessionJsonHelper
 import rocks.urzahil.confnav.data.network.LocationSearchHelper
 import rocks.urzahil.confnav.data.network.LocationSuggestion
 import rocks.urzahil.confnav.data.repository.ConferenceRepository
+import rocks.urzahil.confnav.data.wear.WatchAgendaPublisher
 import rocks.urzahil.confnav.ui.components.PinColorHelper
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -18,7 +19,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
@@ -87,6 +90,12 @@ class ConferenceViewModel(application: Application) : AndroidViewModel(applicati
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = ConferenceUiState()
         )
+
+        // Keep the watch's copy of the agenda in step with every edit and import.
+        val watchPublisher = WatchAgendaPublisher(application)
+        viewModelScope.launch {
+            repository.allSessions.distinctUntilChanged().collectLatest { watchPublisher.publish(it) }
+        }
     }
 
     /** Emits the current time now and again at the start of every minute while collected. */
