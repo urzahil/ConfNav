@@ -51,6 +51,7 @@ import rocks.urzahil.confnav.ui.icons.filled.MyLocation
 import rocks.urzahil.confnav.ui.schedule.DayFilterChipsRow
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.google.android.gms.maps.CameraUpdate
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -99,7 +100,8 @@ fun ConferenceMapScreen(
         position = savedCameraPosition ?: CameraPosition.fromLatLngZoom(defaultCenter, 16.5f)
     }
     var isMapLoaded by remember { mutableStateOf(false) }
-    // The first time the Map is opened it fits all venues, unless it was opened on a session's pin.
+    // The first time the Map is opened it starts at the user's position; when that is unavailable it
+    // fits all venues instead. Neither applies when it was opened on a session's pin.
     var fitAllPending by remember {
         mutableStateOf(savedCameraPosition == null && uiState.selectedLocationPin == null)
     }
@@ -132,27 +134,31 @@ fun ConferenceMapScreen(
     }
 
     // Function to re-center on all pins
-    suspend fun fitAllPins() {
+    // The re-center button animates; the fallback fit on first opening the Map jumps straight there.
+    suspend fun fitAllPins(animated: Boolean = true) {
         if (uiState.locationGroups.isEmpty()) return
+        suspend fun moveTo(update: CameraUpdate) {
+            if (animated) cameraPositionState.animate(update, 800) else cameraPositionState.move(update)
+        }
         try {
             val builder = LatLngBounds.builder()
             uiState.locationGroups.forEach {
                 builder.include(LatLng(it.latitude, it.longitude))
             }
-            val bounds = builder.build()
-            cameraPositionState.animate(CameraUpdateFactory.newLatLngBounds(bounds, 120), 800)
+            moveTo(CameraUpdateFactory.newLatLngBounds(builder.build(), 120))
         } catch (_: Exception) {
-            cameraPositionState.animate(
-                CameraUpdateFactory.newLatLngZoom(defaultCenter, 16.2f),
-                800
-            )
+            moveTo(CameraUpdateFactory.newLatLngZoom(defaultCenter, 16.2f))
         }
     }
 
-    // On the very first load the map starts at the user's position, then moves to fit all venues.
+    // On the very first load the map stays covered until its starting view is applied, so it never
+    // shows the default camera before jumping to the user's position or the venues.
+    val coverMap = fitAllPending && (!startResolved || uiState.locationGroups.isNotEmpty())
+
+    // Without the user's position, the very first load fits all venues instead.
     LaunchedEffect(startResolved, fitAllPending, isMapLoaded, uiState.locationGroups.isNotEmpty()) {
         if (startResolved && fitAllPending && isMapLoaded && uiState.locationGroups.isNotEmpty()) {
-            fitAllPins()
+            fitAllPins(animated = false)
             fitAllPending = false
         }
     }
@@ -183,6 +189,7 @@ fun ConferenceMapScreen(
         val position = withTimeoutOrNull(LOCATION_TIMEOUT_MS) { currentPosition(context) }
         if (position != null && fitAllPending) {
             cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(position, 16f))
+            fitAllPending = false
         }
         startResolved = true
     }
@@ -271,6 +278,14 @@ fun ConferenceMapScreen(
                     )
                 }
             }
+        }
+
+        if (coverMap) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surface)
+            )
         }
 
         // 2. Top Bar with Filter Chips & Next Event Pill
