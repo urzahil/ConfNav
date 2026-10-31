@@ -100,14 +100,16 @@ fun ConferenceMapScreen(
         position = savedCameraPosition ?: CameraPosition.fromLatLngZoom(defaultCenter, 16.5f)
     }
     var isMapLoaded by remember { mutableStateOf(false) }
-    // The first time the Map is opened it starts at the user's position; when that is unavailable it
-    // fits all venues instead. Neither applies when it was opened on a session's pin.
+    // The first time the Map is opened it starts at the user's position, then animates to fit all
+    // venues. Neither applies when it was opened on a session's pin.
     var fitAllPending by remember {
         mutableStateOf(savedCameraPosition == null && uiState.selectedLocationPin == null)
     }
     // Whether the starting position on the first load is settled: the user's position, or the
     // default when it is unavailable.
     var startResolved by remember { mutableStateOf(!fitAllPending) }
+    // Whether the first load started at the user's position.
+    var startedAtUser by remember { mutableStateOf(false) }
 
     // Leaving the tab keeps the camera where it was, for coming back to it.
     DisposableEffect(Unit) {
@@ -134,7 +136,7 @@ fun ConferenceMapScreen(
     }
 
     // Function to re-center on all pins
-    // The re-center button animates; the fallback fit on first opening the Map jumps straight there.
+    // Animates, except the first fit when the user's position is unavailable, which jumps there.
     suspend fun fitAllPins(animated: Boolean = true) {
         if (uiState.locationGroups.isEmpty()) return
         suspend fun moveTo(update: CameraUpdate) {
@@ -151,14 +153,15 @@ fun ConferenceMapScreen(
         }
     }
 
-    // On the very first load the map stays covered until its starting view is applied, so it never
-    // shows the default camera before jumping to the user's position or the venues.
-    val coverMap = fitAllPending && (!startResolved || uiState.locationGroups.isNotEmpty())
+    // On the very first load the map stays covered until it is at the user's position, or, without
+    // it, until the venues are fitted, so it never shows the default camera first.
+    val coverMap = fitAllPending &&
+        (!startResolved || (!startedAtUser && uiState.locationGroups.isNotEmpty()))
 
-    // Without the user's position, the very first load fits all venues instead.
+    // On the very first load the map starts at the user's position, then moves to fit all venues.
     LaunchedEffect(startResolved, fitAllPending, isMapLoaded, uiState.locationGroups.isNotEmpty()) {
         if (startResolved && fitAllPending && isMapLoaded && uiState.locationGroups.isNotEmpty()) {
-            fitAllPins(animated = false)
+            fitAllPins(animated = startedAtUser)
             fitAllPending = false
         }
     }
@@ -189,7 +192,7 @@ fun ConferenceMapScreen(
         val position = withTimeoutOrNull(LOCATION_TIMEOUT_MS) { currentPosition(context) }
         if (position != null && fitAllPending) {
             cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(position, 16f))
-            fitAllPending = false
+            startedAtUser = true
         }
         startResolved = true
     }
