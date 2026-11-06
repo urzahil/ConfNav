@@ -702,7 +702,9 @@ fun ConfigureSessionScreen(
                         value = description,
                         onValueChange = { description = it },
                         label = "Session Notes / Description",
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = false,
+                        minLines = 3
                     )
                 }
 
