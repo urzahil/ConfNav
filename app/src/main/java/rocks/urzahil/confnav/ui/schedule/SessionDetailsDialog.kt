@@ -26,6 +26,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -249,14 +250,20 @@ fun SessionDetailsDialog(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(28.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                // Bottom actions: Edit (left) and Directions (right, styled like the map's location sheet)
+                // Bottom actions: Edit (left) and Directions (right, styled like the map's location sheet).
+                // Kept outside the scrolling details, with its own top gap, so the details never run
+                // up against the buttons, even when they scroll.
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 12.dp, end = 20.dp, bottom = 16.dp),
+                        .padding(start = 12.dp, end = 20.dp, top = 16.dp, bottom = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
