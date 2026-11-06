@@ -51,6 +51,7 @@ fun SessionCalendarCard(
     onViewOnMap: () -> Unit,
     onEdit: () -> Unit,
     onToggleStar: () -> Unit,
+    onShowDetails: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val locationColor = PinColorHelper.parseColor(session.colorHex)
@@ -111,98 +112,111 @@ fun SessionCalendarCard(
             elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp)
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
-                // Colored Header Strip matching the Pin Color
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .background(locationColor)
-                )
-
+                // Tapping anywhere above the action buttons opens the details popup
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 7.dp)
+                        .clickable(onClick = onShowDetails)
+                        .testTag("session_details_area_${session.id}")
                 ) {
-                    // Track Tag & Room Badge
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    // Colored Header Strip matching the Pin Color
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(3.dp)
+                            .background(locationColor)
+                    )
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 12.dp, end = 12.dp, top = 7.dp, bottom = 6.dp)
                     ) {
-                        // Location Pill matching the PIN color (compact)
+                        // Track Tag & Room Badge
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(3.dp),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(5.dp))
-                                .background(locationColor.copy(alpha = 0.12f))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                                .clickable(enabled = session.hasLocation) { onViewOnMap() }
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
+                            // Location Pill matching the PIN color (compact)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp),
                                 modifier = Modifier
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(locationColor)
-                            )
+                                    .clip(RoundedCornerShape(5.dp))
+                                    .background(locationColor.copy(alpha = 0.12f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    .clickable(enabled = session.hasLocation) { onViewOnMap() }
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(locationColor)
+                                )
+                                Text(
+                                    text = session.locationName,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = locationColor,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(3.dp))
+
+                        // Title
+                        SessionTitleText(
+                            session = session,
+                            style = MaterialTheme.typography.titleSmall.copy(lineHeight = 16.sp),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        // Speaker
+                        if (session.speaker.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = if (session.speakerRole.isNotBlank()) "${session.speaker} (${session.speakerRole})" else session.speaker,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        // Description if present
+                        if (session.description.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = session.locationName,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = locationColor,
-                                maxLines = 1,
+                                text = session.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(3.dp))
+                }
+                }
 
-                    // Title
-                    SessionTitleText(
-                        session = session,
-                        style = MaterialTheme.typography.titleSmall.copy(lineHeight = 16.sp),
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    // Speaker
-                    if (session.speaker.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Text(
-                                text = if (session.speakerRole.isNotBlank()) "${session.speaker} (${session.speakerRole})" else session.speaker,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    // Description if present
-                    if (session.description.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = session.description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    // Bottom Actions: Directions, View on Map, Edit (compact pills)
+                // Bottom Actions: Directions, View on Map, Edit (compact pills)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 12.dp, bottom = 7.dp)
+                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,

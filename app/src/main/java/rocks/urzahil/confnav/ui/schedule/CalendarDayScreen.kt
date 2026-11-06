@@ -27,11 +27,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -49,6 +53,7 @@ import rocks.urzahil.confnav.ui.DayFilter
 import rocks.urzahil.confnav.ui.components.NextEventPill
 import rocks.urzahil.confnav.ui.components.PinColorHelper
 import rocks.urzahil.confnav.ui.components.SessionTitleText
+import rocks.urzahil.confnav.ui.components.openDirections
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Locale
@@ -84,6 +89,11 @@ fun CalendarDayScreen(
     }
     val today = LocalDate.now().toString()
     val density = LocalDensity.current
+    val context = LocalContext.current
+
+    // Session whose details popup is open, by id so the popup follows edits to it
+    var detailsSessionId by rememberSaveable { mutableStateOf<Long?>(null) }
+    val detailsSession = detailsSessionId?.let { id -> uiState.sessions.firstOrNull { it.id == id } }
 
     // When the tab is first opened or on picking a filter (coming back to the tab keeps its
     // position): jump to the current time when today is shown, else to the next shown day;
@@ -169,13 +179,25 @@ fun CalendarDayScreen(
                         CalendarDayGrid(
                             slots = slots,
                             isToday = date == today,
-                            onSessionClick = { onNavigateToConfigure(it) },
+                            onSessionClick = { detailsSessionId = it },
                             modifier = Modifier.testTag("calendar_grid_$date")
                         )
                     }
                 }
             }
         }
+    }
+
+    if (detailsSession != null) {
+        SessionDetailsDialog(
+            session = detailsSession,
+            onDismiss = { detailsSessionId = null },
+            onOpenDirections = { openDirections(context, detailsSession) },
+            onEdit = {
+                detailsSessionId = null
+                onNavigateToConfigure(detailsSession.id)
+            }
+        )
     }
 }
 
