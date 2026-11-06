@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -54,13 +55,15 @@ import java.time.format.DateTimeFormatter
  * Popup with a session's full details, shown when a session card in the agenda is tapped.
  * Styled like the rest of the app: a sheet tinted with the session's pin color (as the map's
  * location sheet), the card's location pill, and the full notes, which the card truncates.
- * The Directions button is offered when the session has a location.
+ * At the bottom, an Edit button on the left and, when the session has a location,
+ * the Directions button on the right.
  */
 @Composable
 fun SessionDetailsDialog(
     session: ConferenceSession,
     onDismiss: () -> Unit,
-    onOpenDirections: () -> Unit
+    onOpenDirections: () -> Unit,
+    onEdit: () -> Unit
 ) {
     val locationColor = PinColorHelper.parseColor(session.colorHex)
     val locale = LocalLocale.current.platformLocale
@@ -246,17 +249,32 @@ fun SessionDetailsDialog(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(28.dp))
                 }
 
-                // Directions action, styled like the map's location sheet
-                if (session.hasLocation) {
-                    Row(
+                // Bottom actions: Edit (left) and Directions (right, styled like the map's location sheet)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 20.dp, bottom = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onEdit,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
-                        horizontalArrangement = Arrangement.End
+                            .size(40.dp)
+                            .testTag("session_details_edit")
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit Session",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    if (session.hasLocation) {
                         ElevatedButton(
                             onClick = onOpenDirections,
                             colors = ButtonDefaults.elevatedButtonColors(

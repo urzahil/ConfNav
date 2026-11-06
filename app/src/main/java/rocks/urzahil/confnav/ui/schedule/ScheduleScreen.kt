@@ -201,7 +201,11 @@ fun ScheduleScreen(
         SessionDetailsDialog(
             session = detailsSession,
             onDismiss = { detailsSessionId = null },
-            onOpenDirections = { openDirections(context, detailsSession) }
+            onOpenDirections = { openDirections(context, detailsSession) },
+            onEdit = {
+                detailsSessionId = null
+                onNavigateToConfigure(detailsSession.id)
+            }
         )
     }
 }
