@@ -24,6 +24,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,6 +60,10 @@ fun ScheduleScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Session whose details popup is open, by id so the popup follows edits to it
+    var detailsSessionId by rememberSaveable { mutableStateOf<Long?>(null) }
+    val detailsSession = detailsSessionId?.let { id -> uiState.sessions.firstOrNull { it.id == id } }
 
     // Scroll back to today when the app returns to the foreground. The observer is also sent
     // the current ON_RESUME as soon as it is added; that one is skipped so coming back from
@@ -162,7 +169,8 @@ fun ScheduleScreen(
                                 onOpenDirections = { openDirections(context, session) },
                                 onViewOnMap = { onNavigateToMap(session) },
                                 onEdit = { onNavigateToConfigure(session.id) },
-                                onToggleStar = { viewModel.setStarred(session, !session.starred) }
+                                onToggleStar = { viewModel.setStarred(session, !session.starred) },
+                                onShowDetails = { detailsSessionId = session.id }
                             )
                         }
                     }
@@ -187,6 +195,18 @@ fun ScheduleScreen(
         ) {
             Icon(Icons.Default.Add, contentDescription = "Add Session")
         }
+    }
+
+    if (detailsSession != null) {
+        SessionDetailsDialog(
+            session = detailsSession,
+            onDismiss = { detailsSessionId = null },
+            onOpenDirections = { openDirections(context, detailsSession) },
+            onEdit = {
+                detailsSessionId = null
+                onNavigateToConfigure(detailsSession.id)
+            }
+        )
     }
 }
 
