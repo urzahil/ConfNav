@@ -7,6 +7,7 @@ Agendas are built in the companion **web builder** ([urzahil.github.io/ConfNav](
 ## Features
 
 ### Android app
+- **Welcome slides**: on first launch, four short slides introduce the app, the web builder and the Wear OS app. Skip them at any time.
 - **Agenda**: filter sessions by day. Star the sessions you don't want to miss: they get a gold star next to their title and are drawn on top of overlapping sessions in the Calendar. A "next event" pill jumps straight to directions for the upcoming session.
 - **Map**: colour-coded pins, with sessions grouped by location.
 - **Editing**: add, edit and delete sessions inside the app.
