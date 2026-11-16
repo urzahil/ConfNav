@@ -26,7 +26,7 @@ RING_LAT, RING_LON = 0.00018, 0.00027
 
 # Room name as shown on the grid -> pin colour. Order = position around the ring.
 ROOMS = [
-    ("Novotel Reception", "#E6194B"),
+    ("Champagne Suite Foyer", "#E6194B"),  # replaced "Novotel Reception" (unused since Nov 2026), same pin slot
     ("Cremant Suite", "#3CB44B"),
     ("Bouzy", "#FFE119"),
     ("Epernay", "#4363D8"),
@@ -48,6 +48,12 @@ for i, (room, color) in enumerate(ROOMS):
         round(BASE_LON + RING_LON * math.cos(angle), 6),
         color,
     )
+
+# Grid room name -> name used in ConfNav (fixes typos/odd names on Sessionize).
+RENAMES = {
+    "Champange Suite Foyer": "Champagne Suite Foyer",
+}
+RENAMES = {k.casefold(): v for k, v in RENAMES.items()}
 
 TRACK_CATEGORY = "track_selection"  # the Sessionize tag category used as the session's track
 
@@ -77,6 +83,7 @@ def parse(page):
         if not (room and times and title):
             sys.exit("Could not parse a session; the page layout may have changed.")
         room_name, title_text = clean(room.group(1)), clean(title.group(1))
+        room_name = RENAMES.get(room_name.casefold(), room_name)
         info = LOCATIONS.get(room_name.casefold())
         if info is None:
             unknown.setdefault(room_name, []).append(f"{times.group(1)} {times.group(2)} {title_text}")
