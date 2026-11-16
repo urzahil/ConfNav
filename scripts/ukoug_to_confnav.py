@@ -4,7 +4,10 @@
 Usage:
     python3 ukoug_to_confnav.py                      # fetch the live grid, write sessionize-agenda.json
     python3 ukoug_to_confnav.py -o agenda.json
-    python3 ukoug_to_confnav.py --html saved_grid.html
+    python3 ukoug_to_confnav.py --html saved_grid.html --sessions-html saved_sessions.html
+
+Titles, times, rooms and speakers come from the GridSmart view; descriptions come from the
+Sessions view of the same event, matched by session id.
 
 Standard library only (Python 3.8+).
 """
@@ -17,6 +20,7 @@ import sys
 import urllib.request
 
 URL = "https://sessionize.com/api/v2/tbqv7l55/view/GridSmart"
+SESSIONS_URL = "https://sessionize.com/api/v2/tbqv7l55/view/Sessions"
 
 VENUE = "Novotel London West"
 ADDRESS = "Novotel London West, 1 Shortlands, London W6 8DR, United Kingdom"
@@ -62,21 +66,42 @@ def clean(s):
     return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", s))).strip()
 
 
-def load_page(args):
-    if args.html:
-        with open(args.html, encoding="utf-8") as f:
+def clean_multiline(s):
+    """Like clean(), but keeps <br> and paragraph breaks as newlines."""
+    s = re.sub(r"<br\s*/?>|</p>", "\n", s)
+    lines = [re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", x))).strip() for x in s.split("\n")]
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+
+
+def load_page(path, url):
+    if path:
+        with open(path, encoding="utf-8") as f:
             return f.read()
-    req = urllib.request.Request(args.url, headers={"User-Agent": "Mozilla/5.0 (confnav-import)"})
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (confnav-import)"})
     with urllib.request.urlopen(req, timeout=60) as r:
         return r.read().decode("utf-8")
 
 
-def parse(page):
+def parse_descriptions(page):
+    """Session id -> description, from the Sessions view."""
+    descriptions = {}
+    for block in re.split(r'<li id="sz-session-', page)[1:]:
+        sid = re.match(r"(\d+)", block)
+        desc = re.search(r'<p class="sz-session__description">(.*?)</p>', block, re.S)
+        if sid and desc:
+            text = clean_multiline(desc.group(1))
+            if text:
+                descriptions[sid.group(1)] = text
+    return descriptions
+
+
+def parse(page, descriptions):
     blocks = re.split(r'<div data-sessionid="', page)[1:]
     if not blocks:
         sys.exit("No sessions found: the page layout may have changed.")
     sessions, unknown = [], {}
     for block in blocks:
+        sid = re.match(r"(\d+)", block)
         room = re.search(r'class="sz-session__room">(.*?)</div>', block, re.S)
         times = re.search(r'data-sztz="TimeWithDuration\|[^|]*\|(\d{4}-\d\d-\d\d)T(\d\d:\d\d)[^|]*\|\d{4}-\d\d-\d\dT(\d\d:\d\d)', block)
         title = re.search(r'<h3 class="sz-session__title">(.*?)</h3>', block, re.S)
@@ -106,6 +131,9 @@ def parse(page):
         }
         if track:
             session["track"] = clean(track.group(1))
+        description = descriptions.get(sid.group(1)) if sid else None
+        if description:
+            session["description"] = description
         sessions.append(session)
     if unknown:
         lines = ["Rooms missing from the ROOMS table (add them near the top of this script):"]
@@ -119,17 +147,24 @@ def parse(page):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--url", default=URL, help="Sessionize GridSmart URL")
+    ap.add_argument("--sessions-url", default=SESSIONS_URL, help="Sessionize Sessions view URL (for descriptions)")
     ap.add_argument("--html", help="read a saved copy of the grid instead of fetching it")
+    ap.add_argument("--sessions-html", help="read a saved copy of the Sessions view instead of fetching it")
     ap.add_argument("-o", "--output", default="sessionize-agenda.json")
     args = ap.parse_args()
 
-    sessions = parse(load_page(args))
+    descriptions = parse_descriptions(load_page(args.sessions_html, args.sessions_url))
+    if not descriptions:
+        print("Warning: no session descriptions found; the Sessions view layout may have changed.", file=sys.stderr)
+    sessions = parse(load_page(args.html, args.url), descriptions)
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(sessions, f, ensure_ascii=False, indent=2)
     per_day = {}
     for s in sessions:
         per_day[s["date"]] = per_day.get(s["date"], 0) + 1
-    print(f"Wrote {len(sessions)} sessions to {args.output}: " + ", ".join(f"{d}: {n}" for d, n in sorted(per_day.items())))
+    with_desc = sum(1 for s in sessions if "description" in s)
+    print(f"Wrote {len(sessions)} sessions ({with_desc} with descriptions) to {args.output}: "
+          + ", ".join(f"{d}: {n}" for d, n in sorted(per_day.items())))
 
 
 if __name__ == "__main__":
