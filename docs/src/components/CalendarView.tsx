@@ -141,7 +141,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ sessions, onEdit }) 
       )}
 
       {/* Time grid */}
-      <div className="relative flex" style={{ height: gridHeight }}>
+      {/* isolate: keep session z-indices (starred = 100+) from escaping above modals */}
+      <div className="relative isolate flex" style={{ height: gridHeight }}>
         <div className="w-12 shrink-0 relative">
           {hours.map((h, i) => (
             <span
