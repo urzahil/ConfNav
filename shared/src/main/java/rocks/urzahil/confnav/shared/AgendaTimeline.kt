@@ -56,9 +56,9 @@ object AgendaTimeline {
      * now. Empty when nothing is left.
      */
     fun build(sessions: List<WatchSession>, now: LocalDateTime, maxSlots: Int = 24): List<TimelineSlot> {
-        // The answer can only change when a session starts or once its last minute is over.
+        // The answer can only change when a session starts, enters its last minute (it may yield to a running session) or once that is over.
         val changes = sessions
-            .flatMap { listOfNotNull(startOf(it), endOf(it)?.plusMinutes(1)) }
+            .flatMap { listOfNotNull(startOf(it), endOf(it), endOf(it)?.plusMinutes(1)) }
             .filter { it.isAfter(now) }
             .toSortedSet()
         val boundaries = listOf(now) + changes

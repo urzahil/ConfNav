@@ -40,6 +40,15 @@ class LocationSearchHelper(
     @Volatile
     private var sessionToken: String = UUID.randomUUID().toString()
 
+    /** Google's error text can name the device's IP address, so it is only logged in debug builds. */
+    private fun debugDetail(message: String?): String =
+        if (BuildConfig.DEBUG && !message.isNullOrBlank()) ": $message" else ""
+
+    /** Starts a fresh autocomplete billing session, e.g. when the user begins a new search. */
+    fun startNewSearchSession() {
+        sessionToken = UUID.randomUUID().toString()
+    }
+
     suspend fun searchSuggestions(query: String): List<LocationSuggestion> =
         withContext(Dispatchers.IO) {
             val cleanQuery = query.trim()
@@ -54,7 +63,7 @@ class LocationSearchHelper(
                 try {
                     val response = service.getPlaceAutocomplete(input = cleanQuery, apiKey = apiKey, sessionToken = sessionToken)
                     if (response.status != "OK" && response.status != "ZERO_RESULTS") {
-                        Log.w(TAG, "Places autocomplete returned ${response.status}: ${response.errorMessage}")
+                        Log.w(TAG, "Places autocomplete returned ${response.status}" + debugDetail(response.errorMessage))
                     }
                     if (response.status == "OK" && response.predictions.isNotEmpty()) {
                         for (pred in response.predictions) {
@@ -184,7 +193,7 @@ class LocationSearchHelper(
             try {
                 val response = service.geocodePlaceId(placeId = placeId, apiKey = apiKey)
                 if (response.status != "OK" && response.status != "ZERO_RESULTS") {
-                    Log.w(TAG, "Geocoding returned ${response.status}: ${response.errorMessage}")
+                    Log.w(TAG, "Geocoding returned ${response.status}" + debugDetail(response.errorMessage))
                 }
                 val location = response.results.firstOrNull()?.geometry?.location
                 if (location != null) {

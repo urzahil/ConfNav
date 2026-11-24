@@ -143,6 +143,7 @@ fun SessionCalendarCard(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(3.dp),
                                 modifier = Modifier
+                                    .weight(1f, fill = false)
                                     .clip(RoundedCornerShape(5.dp))
                                     .background(locationColor.copy(alpha = 0.12f))
                                     .padding(horizontal = 6.dp, vertical = 2.dp)

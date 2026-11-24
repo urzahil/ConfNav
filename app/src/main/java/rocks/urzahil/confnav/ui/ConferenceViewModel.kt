@@ -324,6 +324,8 @@ class ConferenceViewModel(application: Application) : AndroidViewModel(applicati
 
         val cleanQuery = query.trim()
         if (cleanQuery.length < 2) {
+            // Query cleared: the next search starts a new autocomplete (billing) session.
+            locationSearchHelper.startNewSearchSession()
             locationSearch.value = LocationSearchState()
             return
         }

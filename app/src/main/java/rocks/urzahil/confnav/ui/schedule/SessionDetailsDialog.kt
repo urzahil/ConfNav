@@ -39,7 +39,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import rocks.urzahil.confnav.data.model.SessionJsonHelper
 import androidx.compose.material3.TextButton
-import androidx.compose.ui.platform.LocalUriHandler
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.testTag
@@ -241,12 +243,20 @@ fun SessionDetailsDialog(
                             ?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
                     }
                     if (link != null) {
-                        val uriHandler = LocalUriHandler.current
+                        val context = LocalContext.current
+                        val host = remember(link) { Uri.parse(link).host.orEmpty() }
                         TextButton(
-                            onClick = { runCatching { uriHandler.openUri(link) } },
+                            onClick = {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(Intent.ACTION_VIEW, Uri.parse(link))
+                                            .addCategory(Intent.CATEGORY_BROWSABLE)
+                                    )
+                                }
+                            },
                             modifier = Modifier.testTag("session_details_link")
                         ) {
-                            Text("Open session page")
+                            Text("Open $host")
                         }
                     }
 

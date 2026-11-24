@@ -141,9 +141,10 @@ fun ConfigureSessionScreen(
     // The session the form was last filled from, so recreation (rotation, dark mode) keeps edits.
     var loadedSessionId by rememberSaveable { mutableStateOf<Long?>(null) }
 
-    // Coordinates of a picked suggestion are still being looked up; saving waits for them.
-    var resolvingLocation by remember { mutableStateOf(false) }
-    var locationRequest by remember { mutableIntStateOf(0) }
+    // Place id of a picked suggestion whose coordinates are still being looked up; saving waits for it.
+    // Saveable, so a lookup interrupted by rotation is started again by the effect below.
+    var pendingPlaceId by rememberSaveable { mutableStateOf<String?>(null) }
+    val resolvingLocation = pendingPlaceId != null
 
     // Optional track label (e.g. "Keynote")
     var track by rememberSaveable { mutableStateOf("") }
@@ -153,8 +154,7 @@ fun ConfigureSessionScreen(
     fun clearForm() {
         currentId = 0L
         loadedSessionId = null
-        resolvingLocation = false
-        locationRequest++
+        pendingPlaceId = null
         title = ""
         speaker = ""
         speakerRole = ""
@@ -174,8 +174,7 @@ fun ConfigureSessionScreen(
     fun loadSession(session: ConferenceSession) {
         currentId = session.id
         loadedSessionId = session.id
-        resolvingLocation = false
-        locationRequest++
+        pendingPlaceId = null
         title = session.title
         speaker = session.speaker
         speakerRole = session.speakerRole
@@ -207,6 +206,20 @@ fun ConfigureSessionScreen(
 
     // JSON export / import (file pickers, add-or-replace dialog and result messages)
     val importExport = rememberSessionImportExport(viewModel, uiState.sessions.size)
+
+    LaunchedEffect(pendingPlaceId) {
+        val placeId = pendingPlaceId ?: return@LaunchedEffect
+        viewModel.resolveLocationSuggestion(placeId) { coordinates ->
+            // Ignore the answer if another venue was picked (or the form cleared) in the meantime.
+            if (pendingPlaceId == placeId) {
+                if (coordinates != null) {
+                    latitude = coordinates.first
+                    longitude = coordinates.second
+                }
+                pendingPlaceId = null
+            }
+        }
+    }
 
     // Fill the form once when an edit starts. It is keyed on the session being present rather than on
     // the whole list, so unrelated database changes never overwrite what the user is typing.
@@ -617,25 +630,12 @@ fun ConfigureSessionScreen(
                                                     // Resolve coordinates only for the selected prediction. The previous
                                                     // venue's coordinates are dropped first so they can never end up on
                                                     // the new venue, even if the lookup fails or is slow.
-                                                    locationRequest++
-                                                    val request = locationRequest
                                                     if (!suggestion.placeId.isNullOrBlank()) {
                                                         latitude = 0.0
                                                         longitude = 0.0
-                                                        resolvingLocation = true
-                                                        viewModel.resolveLocationSuggestion(
-                                                            suggestion.placeId
-                                                        ) { coordinates ->
-                                                            if (request == locationRequest) {
-                                                                if (coordinates != null) {
-                                                                    latitude = coordinates.first
-                                                                    longitude = coordinates.second
-                                                                }
-                                                                resolvingLocation = false
-                                                            }
-                                                        }
+                                                        pendingPlaceId = suggestion.placeId
                                                     } else {
-                                                        resolvingLocation = false
+                                                        pendingPlaceId = null
                                                         latitude = suggestion.latitude
                                                         longitude = suggestion.longitude
                                                     }

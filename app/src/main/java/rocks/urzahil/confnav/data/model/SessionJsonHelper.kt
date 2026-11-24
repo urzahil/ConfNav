@@ -34,6 +34,7 @@ object SessionJsonHelper {
         "title", "speaker", "speakerRole", "date", "startTime", "endTime", "locationName", "address",
         "latitude", "longitude", "colorHex", "track", "description", "starred"
     )
+    private const val MAX_EXTRA_JSON_CHARS = 64 * 1024
     private val HEX_COLOR = Regex("^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$")
 
     /** Strict `yyyy-MM-dd` parsing (also tolerates a missing leading zero, which is normalised). */
@@ -100,7 +101,9 @@ object SessionJsonHelper {
             if (session.description.isNotBlank()) obj["description"] = session.description
             if (session.starred) obj["starred"] = true
             // Custom keys from the imported file come back out unchanged (never overriding a known key).
-            extraFields(session).forEach { (key, value) -> if (key !in KNOWN_KEYS) obj[key] = value }
+            extraFields(session).forEach { (key, value) ->
+                if (key !in KNOWN_KEYS) obj[key] = if (value is Double && value % 1.0 == 0.0 && Math.abs(value) < 1e15) value.toLong() else value
+            }
             obj
         }
         return anyAdapter.indent("  ").toJson(list)
@@ -225,7 +228,9 @@ object SessionJsonHelper {
         val extras = obj.entries
             .filter { (k, v) -> k is String && k !in KNOWN_KEYS && v != null }
             .associate { (k, v) -> k as String to v }
-        return if (extras.isEmpty()) "" else anyAdapter.toJson(extras)
+        val json = if (extras.isEmpty()) "" else anyAdapter.toJson(extras)
+        // A huge row would make Room's cursor window overflow on every launch, so oversized extras are dropped.
+        return if (json.length > MAX_EXTRA_JSON_CHARS) "" else json
     }
 
     /** Reads a value as trimmed text. JSON `null` and non-scalar values become an empty string. */
