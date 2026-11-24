@@ -126,4 +126,15 @@ class SessionJsonHelperTest {
         assertNull(SessionJsonHelper.parseTime("24:00"))
         assertEquals("2026-10-05", SessionJsonHelper.parseDate("2026-10-5").toString())
     }
+
+    @Test
+    fun `custom keys survive an import and export round trip`() {
+        val json = """[{"title":"T","date":"2026-10-05","startTime":"09:00","endTime":"10:00","url":"https://example.org/t","room":3}]"""
+        val session = SessionJsonHelper.importFromJson(json).getOrThrow().single()
+        assertEquals("https://example.org/t", SessionJsonHelper.extraText(session, "url"))
+
+        val exported = SessionJsonHelper.exportToJson(listOf(session))
+        assertTrue(exported.contains("\"url\": \"https://example.org/t\""))
+        assertTrue(exported.contains("\"room\""))
+    }
 }

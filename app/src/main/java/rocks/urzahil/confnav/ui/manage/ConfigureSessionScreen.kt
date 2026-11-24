@@ -60,6 +60,11 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import java.util.Locale
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.material3.TimePicker
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -103,38 +108,53 @@ fun ConfigureSessionScreen(
     val focusManager = LocalFocusManager.current
     val locale = LocalLocale.current.platformLocale
 
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     // Form fields state
-    var currentId by remember { mutableStateOf(editingSessionId ?: 0L) }
-    var title by remember { mutableStateOf("") }
-    var speaker by remember { mutableStateOf("") }
-    var speakerRole by remember { mutableStateOf("") }
-    var selectedDate by remember { mutableStateOf(LocalDate.now().toString()) }
-    var startTime by remember { mutableStateOf("") }
-    var endTime by remember { mutableStateOf("") }
-    var locationName by remember { mutableStateOf("") }
-    var locationAddress by remember { mutableStateOf("") }
-    var latitude by remember { mutableStateOf(0.0) }
-    var longitude by remember { mutableStateOf(0.0) }
-    var description by remember { mutableStateOf("") }
-    var starred by remember { mutableStateOf(false) }
+    var currentId by rememberSaveable { mutableStateOf(editingSessionId ?: 0L) }
+    var title by rememberSaveable { mutableStateOf("") }
+    var speaker by rememberSaveable { mutableStateOf("") }
+    var speakerRole by rememberSaveable { mutableStateOf("") }
+    var selectedDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var startTime by rememberSaveable { mutableStateOf("") }
+    var endTime by rememberSaveable { mutableStateOf("") }
+    var locationName by rememberSaveable { mutableStateOf("") }
+    var locationAddress by rememberSaveable { mutableStateOf("") }
+    var latitude by rememberSaveable { mutableStateOf(0.0) }
+    var longitude by rememberSaveable { mutableStateOf(0.0) }
+    var description by rememberSaveable { mutableStateOf("") }
+    var starred by rememberSaveable { mutableStateOf(false) }
 
     // Calendar DatePicker Dialog State
-    var showDatePickerDialog by remember { mutableStateOf(false) }
+    var showDatePickerDialog by rememberSaveable { mutableStateOf(false) }
 
     // Autocomplete search query
-    var locationQuery by remember { mutableStateOf("") }
-    var showSuggestions by remember { mutableStateOf(false) }
+    var locationQuery by rememberSaveable { mutableStateOf("") }
+    var showSuggestions by rememberSaveable { mutableStateOf(false) }
 
     // Dialog state for delete confirmation
     var sessionToDelete by remember { mutableStateOf<ConferenceSession?>(null) }
 
-    // Field the form does not show but must keep when a session is edited
-    var track by remember { mutableStateOf("") }
+    // Which time field its picker dialog is editing: 0 none, 1 start, 2 end.
+    var timePickerTarget by rememberSaveable { mutableIntStateOf(0) }
+
+    // The session the form was last filled from, so recreation (rotation, dark mode) keeps edits.
+    var loadedSessionId by rememberSaveable { mutableStateOf<Long?>(null) }
+
+    // Place id of a picked suggestion whose coordinates are still being looked up; saving waits for it.
+    // Saveable, so a lookup interrupted by rotation is started again by the effect below.
+    var pendingPlaceId by rememberSaveable { mutableStateOf<String?>(null) }
+    val resolvingLocation = pendingPlaceId != null
+
+    // Optional track label (e.g. "Keynote")
+    var track by rememberSaveable { mutableStateOf("") }
+    // Custom JSON keys (e.g. a url) kept on the session so an edit doesn't drop them
+    var extraJson by rememberSaveable { mutableStateOf("") }
 
     fun clearForm() {
         currentId = 0L
+        loadedSessionId = null
+        pendingPlaceId = null
         title = ""
         speaker = ""
         speakerRole = ""
@@ -148,10 +168,13 @@ fun ConfigureSessionScreen(
         description = ""
         starred = false
         track = ""
+        extraJson = ""
     }
 
     fun loadSession(session: ConferenceSession) {
         currentId = session.id
+        loadedSessionId = session.id
+        pendingPlaceId = null
         title = session.title
         speaker = session.speaker
         speakerRole = session.speakerRole
@@ -166,6 +189,7 @@ fun ConfigureSessionScreen(
         starred = session.starred
         locationQuery = session.locationName
         track = session.track
+        extraJson = session.extraJson
     }
 
     // Return to the screen that invoked this edit.
@@ -183,11 +207,27 @@ fun ConfigureSessionScreen(
     // JSON export / import (file pickers, add-or-replace dialog and result messages)
     val importExport = rememberSessionImportExport(viewModel, uiState.sessions.size)
 
+    LaunchedEffect(pendingPlaceId) {
+        val placeId = pendingPlaceId ?: return@LaunchedEffect
+        viewModel.resolveLocationSuggestion(placeId) { coordinates ->
+            // Ignore the answer if another venue was picked (or the form cleared) in the meantime.
+            if (pendingPlaceId == placeId) {
+                if (coordinates != null) {
+                    latitude = coordinates.first
+                    longitude = coordinates.second
+                }
+                pendingPlaceId = null
+            }
+        }
+    }
+
     // Fill the form once when an edit starts. It is keyed on the session being present rather than on
     // the whole list, so unrelated database changes never overwrite what the user is typing.
     val sessionBeingEdited = uiState.sessions.firstOrNull { it.id == editingSessionId }
     LaunchedEffect(editingSessionId, sessionBeingEdited != null) {
-        if (editingSessionId != null && editingSessionId != 0L && sessionBeingEdited != null) {
+        if (editingSessionId != null && editingSessionId != 0L && sessionBeingEdited != null &&
+            loadedSessionId != editingSessionId
+        ) {
             loadSession(sessionBeingEdited)
         }
     }
@@ -427,12 +467,21 @@ fun ConfigureSessionScreen(
                             value = startTime,
                             onValueChange = { startTime = it },
                             label = "Start Time *",
+                            capitalization = KeyboardCapitalization.None,
                             leadingIcon = {
                                 Icon(
                                     Icons.Default.Schedule,
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp)
                                 )
+                            },
+                            trailingIcon = {
+                                IconButton(onClick = { timePickerTarget = 1 }) {
+                                    Icon(
+                                        Icons.Default.Schedule,
+                                        contentDescription = "Pick start time"
+                                    )
+                                }
                             },
                             modifier = Modifier
                                 .weight(1f)
@@ -442,6 +491,7 @@ fun ConfigureSessionScreen(
                             value = endTime,
                             onValueChange = { endTime = it },
                             label = "End Time *",
+                            capitalization = KeyboardCapitalization.None,
                             leadingIcon = {
                                 Icon(
                                     Icons.Default.Schedule,
@@ -449,11 +499,31 @@ fun ConfigureSessionScreen(
                                     modifier = Modifier.size(18.dp)
                                 )
                             },
+                            trailingIcon = {
+                                IconButton(onClick = { timePickerTarget = 2 }) {
+                                    Icon(
+                                        Icons.Default.Schedule,
+                                        contentDescription = "Pick end time"
+                                    )
+                                }
+                            },
                             modifier = Modifier
                                 .weight(1f)
                                 .testTag("input_end_time")
                         )
                     }
+                }
+
+                // Track (optional)
+                item {
+                    SessionTextField(
+                        value = track,
+                        onValueChange = { track = it },
+                        label = "Track (optional)",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("input_track")
+                    )
                 }
 
                 // ==================== GOOGLE MAPS AUTOCOMPLETE LOCATION ====================
@@ -557,17 +627,15 @@ fun ConfigureSessionScreen(
                                                     keyboardController?.hide()
                                                     focusManager.clearFocus(force = true)
 
-                                                    // Resolve coordinates only for the selected prediction.
+                                                    // Resolve coordinates only for the selected prediction. The previous
+                                                    // venue's coordinates are dropped first so they can never end up on
+                                                    // the new venue, even if the lookup fails or is slow.
                                                     if (!suggestion.placeId.isNullOrBlank()) {
-                                                        viewModel.resolveLocationSuggestion(
-                                                            suggestion.placeId
-                                                        ) { coordinates ->
-                                                            if (coordinates != null) {
-                                                                latitude = coordinates.first
-                                                                longitude = coordinates.second
-                                                            }
-                                                        }
+                                                        latitude = 0.0
+                                                        longitude = 0.0
+                                                        pendingPlaceId = suggestion.placeId
                                                     } else {
+                                                        pendingPlaceId = null
                                                         latitude = suggestion.latitude
                                                         longitude = suggestion.longitude
                                                     }
@@ -794,6 +862,14 @@ fun ConfigureSessionScreen(
                                     }
                                     locationName = locationQuery.trim()
                                 }
+                                if (resolvingLocation) {
+                                    Toast.makeText(
+                                        context,
+                                        "Still looking up the venue's location, try again in a moment",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    return@Button
+                                }
                                 val hasCoordinates = !(latitude == 0.0 && longitude == 0.0)
 
                                 val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
@@ -810,7 +886,8 @@ fun ConfigureSessionScreen(
                                     latitude = latitude,
                                     longitude = longitude,
                                     colorHex = "", // assigned by saveSession from the venue
-                                    track = track,
+                                    track = track.trim(),
+                                    extraJson = extraJson,
                                     description = description.trim(),
                                     starred = starred
                                 )
@@ -867,6 +944,38 @@ fun ConfigureSessionScreen(
                 onDelete = { sessionToDelete = it }
             )
         }
+    }
+
+    // ==================== TIME PICKER DIALOG ====================
+    if (timePickerTarget != 0) {
+        val editingStart = timePickerTarget == 1
+        val current = SessionJsonHelper.parseTime(if (editingStart) startTime else endTime)
+        val timeState = rememberTimePickerState(
+            initialHour = current?.hour ?: 9,
+            initialMinute = current?.minute ?: 0,
+            is24Hour = true
+        )
+        AlertDialog(
+            onDismissRequest = { timePickerTarget = 0 },
+            title = { Text(if (editingStart) "Start time" else "End time") },
+            text = { TimePicker(state = timeState) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val picked = String.format(Locale.US, "%02d:%02d", timeState.hour, timeState.minute)
+                        if (editingStart) startTime = picked else endTime = picked
+                        timePickerTarget = 0
+                    }
+                ) {
+                    Text("OK", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { timePickerTarget = 0 }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     // ==================== CALENDAR DATE PICKER DIALOG ====================

@@ -13,8 +13,9 @@ android {
         minSdk = 30
         targetSdk = 36
         // Phone versionCode + 1,000,000, so the phone and watch builds never share a code on Play.
-        versionCode = 1_000_014
-        versionName = "1.11.2"
+        // Both values come from gradle.properties, shared with the phone app.
+        versionCode = providers.gradleProperty("confnav.versionCode").get().toInt() + 1_000_000
+        versionName = providers.gradleProperty("confnav.versionName").get()
     }
 
     val releaseKeystorePath = providers.gradleProperty("releaseKeystorePath").orNull

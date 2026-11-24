@@ -45,7 +45,8 @@ fun rememberSessionImportExport(
     sessionCount: Int
 ): SessionImportExport {
     val context = LocalContext.current
-    var pending by remember { mutableStateOf<ImportReport?>(null) }
+    // Held in the view model so an open dialog survives rotation.
+    val pending = viewModel.pendingImport
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
@@ -97,7 +98,7 @@ fun rememberSessionImportExport(
                     toast(summary("Imported", outcome, report))
                 }
 
-            else -> pending = report
+            else -> viewModel.pendingImport = report
         }
     }
 
@@ -105,17 +106,17 @@ fun rememberSessionImportExport(
         ImportChoiceDialog(
             report = report,
             existingCount = sessionCount,
-            onDismiss = { pending = null },
+            onDismiss = { viewModel.pendingImport = null },
             onAdd = {
                 viewModel.importSessions(report.sessions, replaceAll = false) { outcome ->
                     toast(summary("Added", outcome, report))
-                    pending = null
+                    viewModel.pendingImport = null
                 }
             },
             onReplace = {
                 viewModel.importSessions(report.sessions, replaceAll = true) { outcome ->
                     toast(summary("Replaced agenda with", outcome, report))
-                    pending = null
+                    viewModel.pendingImport = null
                 }
             }
         )

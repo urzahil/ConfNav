@@ -145,6 +145,7 @@ fun CalendarDayScreen(
             if (uiState.nextSession != null) {
                 NextEventPill(
                     session = uiState.nextSession,
+                    ongoing = uiState.nextSessionOngoing,
                     onNavigateToMap = { session -> onNavigateToMap(session) }
                 )
             }
@@ -179,6 +180,7 @@ fun CalendarDayScreen(
                         CalendarDayGrid(
                             slots = slots,
                             isToday = date == today,
+                            now = uiState.now.toLocalTime(),
                             onSessionClick = { detailsSessionId = it },
                             modifier = Modifier.testTag("calendar_grid_$date")
                         )
@@ -212,6 +214,7 @@ private fun minuteOffset(minute: Int, firstHour: Int): Dp =
 private fun CalendarDayGrid(
     slots: List<CalendarSlot>,
     isToday: Boolean,
+    now: LocalTime,
     onSessionClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -285,7 +288,6 @@ private fun CalendarDayGrid(
             }
 
             if (isToday) {
-                val now = LocalTime.now()
                 val nowMinute = now.hour * 60 + now.minute
                 if (nowMinute in firstHour * 60..lastHour * 60) {
                     val y = minuteToY(nowMinute)

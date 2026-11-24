@@ -8,10 +8,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
@@ -26,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -70,11 +69,11 @@ enum class NavigationTab(val title: String) {
 fun ConferenceApp(
     viewModel: ConferenceViewModel = viewModel()
 ) {
-    var selectedTab by remember { mutableStateOf(NavigationTab.AGENDA) }
-    var editingSessionId by remember { mutableStateOf<Long?>(null) }
-    var editOriginTab by remember { mutableStateOf(NavigationTab.CONFIGURE) }
+    var selectedTab by rememberSaveable { mutableStateOf(NavigationTab.AGENDA) }
+    var editingSessionId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var editOriginTab by rememberSaveable { mutableStateOf(NavigationTab.CONFIGURE) }
     // The Agenda or Calendar tab that opened the Map for a session, if any.
-    var mapOriginTab by remember { mutableStateOf<NavigationTab?>(null) }
+    var mapOriginTab by rememberSaveable { mutableStateOf<NavigationTab?>(null) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // Kept out here so the Agenda, Calendar and Map keep their position while another tab is
     // shown; the lists only jump to today, and the Map only fits all venues, when first opened.
@@ -87,9 +86,7 @@ fun ConferenceApp(
     // Opens the Map tab, with the session's venue pin selected when a session is given.
     val navigateToMap: (ConferenceSession?) -> Unit = { session ->
         if (session != null) {
-            val targetGroup = uiState.locationGroups.firstOrNull { group ->
-                group.sessions.any { it.id == session.id }
-            }
+            val targetGroup = viewModel.locationGroupFor(session)
             if (targetGroup != null) {
                 viewModel.selectLocationPin(targetGroup)
             }
@@ -124,9 +121,8 @@ fun ConferenceApp(
         contentWindowInsets = WindowInsets.safeDrawing,
         bottomBar = {
             NavigationBar(
-                modifier = Modifier
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .testTag("main_navigation_bar"),
+                // NavigationBar applies the navigation-bar insets itself.
+                modifier = Modifier.testTag("main_navigation_bar"),
                 containerColor = MaterialTheme.colorScheme.surface
             ) {
                 // Tab 1: Agenda / Calendar

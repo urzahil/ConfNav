@@ -57,7 +57,8 @@ class ConferenceRepository(private val dao: ConferenceDao) {
         }
     }
 
-    private fun locationKey(session: ConferenceSession): String {
+    /** The venue a session belongs to: its normalised name, or its rounded coordinates when unnamed. */
+    fun locationKey(session: ConferenceSession): String {
         val name = session.locationName.trim().lowercase().replace(Regex("\\s+"), " ")
         return if (name.isNotEmpty()) {
             name

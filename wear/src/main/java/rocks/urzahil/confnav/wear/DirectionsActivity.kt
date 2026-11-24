@@ -22,11 +22,23 @@ class DirectionsActivity : Activity() {
         super.onCreate(savedInstanceState)
         val latitude = intent.getDoubleExtra(EXTRA_LATITUDE, Double.NaN)
         val longitude = intent.getDoubleExtra(EXTRA_LONGITUDE, Double.NaN)
-        if (!latitude.isNaN() && !longitude.isNaN() && !openOnWatch(latitude, longitude)) {
-            openOnPhone(latitude, longitude, intent.getStringExtra(EXTRA_NAME).orEmpty())
+        // The activity is exported, so any app can start it: only act on real coordinates.
+        if (isUsableCoordinate(latitude, longitude)) {
+            if (!openOnWatch(latitude, longitude)) {
+                openOnPhone(latitude, longitude, intent.getStringExtra(EXTRA_NAME).orEmpty())
+            }
+        } else {
+            Log.w(TAG, "Ignoring directions request with invalid coordinates")
+            Toast.makeText(applicationContext, "No location set for this session", Toast.LENGTH_SHORT).show()
         }
         finish()
     }
+
+    /** Same rule as `WatchSession.hasLocation`: finite, in range, and not the 0,0 "not set" value. */
+    private fun isUsableCoordinate(latitude: Double, longitude: Double): Boolean =
+        latitude.isFinite() && longitude.isFinite() &&
+                latitude in -90.0..90.0 && longitude in -180.0..180.0 &&
+                !(latitude == 0.0 && longitude == 0.0)
 
     private fun openOnWatch(latitude: Double, longitude: Double): Boolean {
         val navigation = Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=$latitude,$longitude&mode=w"))
@@ -46,17 +58,18 @@ class DirectionsActivity : Activity() {
         ).addCategory(Intent.CATEGORY_BROWSABLE)
 
         val app = applicationContext
+        val label = name.ifBlank { "your session" }
         val started = RemoteActivityHelper(app).startRemoteActivity(directions)
         started.addListener({
             try {
                 started.get()
+                Toast.makeText(app, "Opening directions to $label on your phone", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 // For example a RemoteIntentException when the phone is out of range.
                 Log.w(TAG, "Could not open directions on the phone", e)
+                Toast.makeText(app, "Couldn't reach your phone", Toast.LENGTH_SHORT).show()
             }
         }, app.mainExecutor)
-        val label = name.ifBlank { "your session" }
-        Toast.makeText(app, "Opening directions to $label on your phone", Toast.LENGTH_SHORT).show()
     }
 
     companion object {

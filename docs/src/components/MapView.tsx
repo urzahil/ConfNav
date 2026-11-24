@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import L from 'leaflet';
 import { escapeHtml, safeColor } from '../utils/html';
 import { ConferenceSession } from '../types';
@@ -9,6 +9,12 @@ interface MapViewProps {
   sessions: ConferenceSession[];
   onEditSession: (session: ConferenceSession) => void;
   selectedSessionId?: string | null;
+}
+
+interface VenueGroup {
+  latitude: number;
+  longitude: number;
+  sessions: ConferenceSession[];
 }
 
 export const MapView: React.FC<MapViewProps> = ({
@@ -52,6 +58,27 @@ export const MapView: React.FC<MapViewProps> = ({
     };
   }, []);
 
+  // One pin per venue: sessions at the same venue share a pin (and its popup) instead of stacking.
+  // Sessions without real coordinates ((0, 0) means "not set") are left off the map.
+  const plotted = useMemo(() => {
+    const groups = new Map<string, VenueGroup>();
+    sessions.forEach((session) => {
+      if (typeof session.latitude !== 'number' || typeof session.longitude !== 'number') return;
+      if (!Number.isFinite(session.latitude) || !Number.isFinite(session.longitude)) return;
+      if (session.latitude === 0 && session.longitude === 0) return;
+      const name = session.locationName.trim().toLowerCase().replace(/\s+/g, ' ');
+      const key = name || `${session.latitude.toFixed(4)},${session.longitude.toFixed(4)}`;
+      const group = groups.get(key);
+      if (group) {
+        group.sessions.push(session);
+      } else {
+        groups.set(key, { latitude: session.latitude, longitude: session.longitude, sessions: [session] });
+      }
+    });
+    return Array.from(groups.values());
+  }, [sessions]);
+  const plottedSessionCount = plotted.reduce((n, g) => n + g.sessions.length, 0);
+
   // Update markers when sessions change
   useEffect(() => {
     const map = mapInstanceRef.current;
@@ -60,54 +87,60 @@ export const MapView: React.FC<MapViewProps> = ({
 
     layer.clearLayers();
 
-    if (sessions.length === 0) return;
+    if (plotted.length === 0) return;
 
     const bounds = L.latLngBounds([]);
 
-    sessions.forEach((session) => {
-      if (typeof session.latitude !== 'number' || typeof session.longitude !== 'number') return;
-      if (session.latitude === 0 && session.longitude === 0) return;
-
-      const marker = L.marker([session.latitude, session.longitude], {
-        icon: createCustomMarkerIcon(session.colorHex, session.locationName),
+    plotted.forEach((group) => {
+      const first = group.sessions[0];
+      const marker = L.marker([group.latitude, group.longitude], {
+        icon: createCustomMarkerIcon(first.colorHex, first.locationName),
       });
 
       // Everything interpolated below comes from user-editable or imported JSON, so it is escaped.
-      const color = safeColor(session.colorHex);
+      const color = safeColor(first.colorHex);
+      const sessionRows = group.sessions
+        .map(
+          (session) => `
+          <div style="border-top: 1px solid #e2e8f0; padding-top: 6px; margin-top: 6px;">
+            <div style="font-weight: 700; font-size: 13px; color: #0f172a;">${session.starred ? '<span style="color: #fbbf24;" aria-label="Starred">★</span> ' : ''}${escapeHtml(session.title)}</div>
+            <div style="font-size: 11px; color: #475569;">${escapeHtml(session.speaker)}</div>
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">📅 ${escapeHtml(session.date)} | ⏰ ${escapeHtml(session.startTime)} - ${escapeHtml(session.endTime)}</div>
+            <button id="edit-session-btn-${escapeHtml(session.id)}" style="width: 100%; padding: 4px 10px; font-size: 12px; font-weight: 600; background: #d97706; color: white; border: none; border-radius: 6px; cursor: pointer;">
+              Edit Session
+            </button>
+          </div>`
+        )
+        .join('');
       const popupContent = `
-        <div style="font-family: inherit; min-width: 180px; padding: 4px;">
-          <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+        <div style="font-family: inherit; min-width: 180px; max-height: 260px; overflow-y: auto; padding: 4px;">
+          <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
             <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${color};"></span>
-            <span style="font-size: 11px; font-weight: 700; color: ${color}; text-transform: uppercase;">${escapeHtml(session.locationName)}</span>
+            <span style="font-size: 11px; font-weight: 700; color: ${color}; text-transform: uppercase;">${escapeHtml(first.locationName)}</span>
           </div>
-          <div style="font-weight: 700; font-size: 14px; color: #0f172a; margin-bottom: 2px;">${session.starred ? '<span style="color: #fbbf24;" aria-label="Starred">★</span> ' : ''}${escapeHtml(session.title)}</div>
-          <div style="font-size: 12px; color: #475569; margin-bottom: 6px;">Speaker: <b>${escapeHtml(session.speaker)}</b></div>
-          <div style="font-size: 11px; color: #64748b; margin-bottom: 8px;">
-            📅 ${escapeHtml(session.date)} | ⏰ ${escapeHtml(session.startTime)} - ${escapeHtml(session.endTime)}
+          <div style="font-size: 11px; color: #64748b; font-style: italic;">
+            📍 ${escapeHtml(first.address || 'No address specified')}
           </div>
-          <div style="font-size: 11px; color: #64748b; margin-bottom: 10px; font-style: italic;">
-            📍 ${escapeHtml(session.address || 'No address specified')}
-          </div>
-          <button id="edit-session-btn-${escapeHtml(session.id)}" style="width: 100%; padding: 6px 10px; font-size: 12px; font-weight: 600; background: #d97706; color: white; border: none; border-radius: 6px; cursor: pointer;">
-            Edit Session
-          </button>
+          ${sessionRows}
         </div>
       `;
 
       marker.bindPopup(popupContent);
 
       marker.on('popupopen', () => {
-        const btn = document.getElementById(`edit-session-btn-${session.id}`);
-        if (btn) {
-          btn.onclick = () => onEditSession(session);
-        }
+        group.sessions.forEach((session) => {
+          const btn = document.getElementById(`edit-session-btn-${session.id}`);
+          if (btn) {
+            btn.onclick = () => onEditSession(session);
+          }
+        });
       });
 
       marker.addTo(layer);
-      bounds.extend([session.latitude, session.longitude]);
+      bounds.extend([group.latitude, group.longitude]);
 
-      if (selectedSessionId === session.id) {
-        map.setView([session.latitude, session.longitude], 16);
+      if (selectedSessionId && group.sessions.some((s) => s.id === selectedSessionId)) {
+        map.setView([group.latitude, group.longitude], 16);
         marker.openPopup();
       }
     });
@@ -115,16 +148,12 @@ export const MapView: React.FC<MapViewProps> = ({
     if (bounds.isValid() && !selectedSessionId) {
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
     }
-  }, [sessions, selectedSessionId, onEditSession]);
+  }, [plotted, selectedSessionId, onEditSession]);
 
   const handleFitAll = () => {
-    if (!mapInstanceRef.current || sessions.length === 0) return;
+    if (!mapInstanceRef.current || plotted.length === 0) return;
     const bounds = L.latLngBounds([]);
-    sessions.forEach((s) => {
-      if (s.latitude && s.longitude) {
-        bounds.extend([s.latitude, s.longitude]);
-      }
-    });
+    plotted.forEach((g) => bounds.extend([g.latitude, g.longitude]));
     if (bounds.isValid()) {
       mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
     }
@@ -148,7 +177,9 @@ export const MapView: React.FC<MapViewProps> = ({
 
       <div className="absolute bottom-3 left-3 z-10 bg-white/95 dark:bg-slate-900/95 px-3 py-1.5 rounded-xl shadow-md border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 backdrop-blur-xs flex items-center gap-2">
         <MapPin className="w-4 h-4 text-amber-600" />
-        <span>{sessions.length} sessions plotted on map</span>
+        <span>
+          {plottedSessionCount} sessions at {plotted.length} venue{plotted.length === 1 ? '' : 's'} plotted on map
+        </span>
       </div>
     </div>
   );

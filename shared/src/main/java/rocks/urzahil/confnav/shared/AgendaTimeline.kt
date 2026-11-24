@@ -18,7 +18,7 @@ data class TimelineSlot(
 /**
  * Works out what the watch shows and when it changes. The "next session" rule is the phone's
  * (`AgendaLogic.nextSession`): the ongoing session, or otherwise the soonest upcoming one, where
- * a session counts until the end of its last minute. Because the whole day is known up front, the
+ * a session counts until the end of its last minute (but yields to a session that has already started). Because the whole day is known up front, the
  * tile and complication can be handed every change in advance instead of waking up to recompute.
  */
 object AgendaTimeline {
@@ -32,12 +32,22 @@ object AgendaTimeline {
     fun endOf(session: WatchSession): LocalDateTime? =
         parse(session.date, session.endTime)
 
-    /** The ongoing session, or otherwise the soonest upcoming one; null when nothing is left. */
+    /**
+     * The ongoing session, or otherwise the soonest upcoming one; null when nothing is left.
+     * A session in its very last minute still counts, but yields to one that has already started, so
+     * back-to-back talks switch at the top of the hour. Among sessions that are on at once (or that start at the
+     * same time) a starred one wins.
+     */
     fun nextSession(sessions: List<WatchSession>, now: LocalDateTime): WatchSession? {
         val minute = now.truncatedTo(ChronoUnit.MINUTES)
-        return sessions
-            .filter { session -> endOf(session)?.isBefore(minute) == false }
-            .minByOrNull { startOf(it) ?: LocalDateTime.MAX }
+        val live = sessions.filter { session -> endOf(session)?.isBefore(minute) == false }
+        val ongoing = live.filter { startOf(it)?.isAfter(minute) == false }
+        // A session in its last minute yields to one that is already running (back-to-back talks).
+        val pool = ongoing.filter { endOf(it)?.isAfter(minute) == true }.ifEmpty { ongoing }.ifEmpty {
+            val soonest = live.minOfOrNull { startOf(it) ?: LocalDateTime.MAX }
+            live.filter { (startOf(it) ?: LocalDateTime.MAX) == soonest }
+        }
+        return pool.sortedWith(compareBy({ !it.starred }, { startOf(it) ?: LocalDateTime.MAX })).firstOrNull()
     }
 
     /**
@@ -46,9 +56,9 @@ object AgendaTimeline {
      * now. Empty when nothing is left.
      */
     fun build(sessions: List<WatchSession>, now: LocalDateTime, maxSlots: Int = 24): List<TimelineSlot> {
-        // The answer can only change when a session starts or once its last minute is over.
+        // The answer can only change when a session starts, enters its last minute (it may yield to a running session) or once that is over.
         val changes = sessions
-            .flatMap { listOfNotNull(startOf(it), endOf(it)?.plusMinutes(1)) }
+            .flatMap { listOfNotNull(startOf(it), endOf(it), endOf(it)?.plusMinutes(1)) }
             .filter { it.isAfter(now) }
             .toSortedSet()
         val boundaries = listOf(now) + changes

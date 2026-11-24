@@ -1,10 +1,11 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { ConferenceSession } from './types';
+import { todayLocal } from './utils/date';
 import { loadSavedSessions, saveSessions } from './utils/storage';
 import { downloadJsonFile } from './utils/exportImport';
 import { SessionCard } from './components/SessionCard';
@@ -183,13 +184,26 @@ export default function App() {
       setSessions(imported);
       showToast(`Replaced schedule with ${imported.length} session(s)`);
     } else {
-      setSessions((prev) => [...prev, ...imported]);
-      showToast(`Appended ${imported.length} new session(s)`);
+      // Same identity as the Android app, so appending the same file twice doesn't duplicate sessions.
+      const keyOf = (s: ConferenceSession) =>
+        [s.title.trim().toLowerCase(), s.date.trim(), s.startTime.trim(), s.locationName.trim().toLowerCase()].join('|');
+      const known = new Set(sessions.map(keyOf));
+      const fresh = imported.filter((s) => {
+        const key = keyOf(s);
+        if (known.has(key)) return false;
+        known.add(key);
+        return true;
+      });
+      const skipped = imported.length - fresh.length;
+      setSessions((prev) => [...prev, ...fresh]);
+      showToast(
+        `Appended ${fresh.length} new session(s)` + (skipped > 0 ? `, skipped ${skipped} duplicate(s)` : '')
+      );
     }
   };
 
   const handleQuickDownloadJson = () => {
-    downloadJsonFile(sessions, `conference-sessions-${new Date().toISOString().split('T')[0]}.json`);
+    downloadJsonFile(sessions, `conference-sessions-${todayLocal()}.json`);
     showToast('Downloaded conference-sessions.json');
   };
 

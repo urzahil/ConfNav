@@ -64,10 +64,10 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlin.coroutines.resume
 
 @Composable
 fun ConferenceMapScreen(
@@ -313,10 +313,9 @@ fun ConferenceMapScreen(
             if (uiState.nextSession != null) {
                 NextEventPill(
                     session = uiState.nextSession,
+                    ongoing = uiState.nextSessionOngoing,
                     onNavigateToMap = { session ->
-                        val targetGroup = uiState.locationGroups.firstOrNull { group ->
-                            group.sessions.any { it.id == session.id }
-                        }
+                        val targetGroup = viewModel.locationGroupFor(session)
                         if (targetGroup != null) {
                             viewModel.selectLocationPin(targetGroup)
                         }
@@ -374,14 +373,16 @@ private const val LOCATION_TIMEOUT_MS = 3000L
 
 /** The device's current position, or null when it can't be determined. Needs location permission. */
 @SuppressLint("MissingPermission")
-private suspend fun currentPosition(context: Context): LatLng? =
-    suspendCancellableCoroutine { cont ->
-        val cancellation = CancellationTokenSource()
-        cont.invokeOnCancellation { cancellation.cancel() }
+private suspend fun currentPosition(context: Context): LatLng? {
+    val cancellation = CancellationTokenSource()
+    return try {
         LocationServices.getFusedLocationProviderClient(context)
             .getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cancellation.token)
-            .addOnCompleteListener { task ->
-                val location = if (task.isSuccessful) task.result else null
-                cont.resume(location?.let { LatLng(it.latitude, it.longitude) })
-            }
+            .await(cancellation)
+            ?.let { LatLng(it.latitude, it.longitude) }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        null
     }
+}

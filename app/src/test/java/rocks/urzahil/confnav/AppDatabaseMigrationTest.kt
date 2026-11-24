@@ -69,7 +69,7 @@ class AppDatabaseMigrationTest {
                 buildList { while (c.moveToNext()) add(c.getString(c.getColumnIndexOrThrow("name"))) }
             }
             assertFalse("isBookmarked" in columns)
-            assertEquals(3, db.openHelper.readableDatabase.version)
+            assertEquals(4, db.openHelper.readableDatabase.version)
         } finally {
             db.close()
         }
@@ -94,7 +94,32 @@ class AppDatabaseMigrationTest {
             val session = runBlocking { db.conferenceDao().getAllSessions().first() }.single()
             assertEquals("Opening Keynote", session.title)
             assertFalse(session.starred)
-            assertEquals(3, db.openHelper.readableDatabase.version)
+            assertEquals(4, db.openHelper.readableDatabase.version)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun `3 to 4 adds extraJson as empty for existing sessions`() {
+        createDatabaseAtVersion(3)
+        SQLiteDatabase.openDatabase(context.getDatabasePath(dbName).path, null, SQLiteDatabase.OPEN_READWRITE).use {
+            it.execSQL(
+                """INSERT INTO conference_sessions (title, speaker, speakerRole, date, startTime, endTime,
+                   locationName, address, latitude, longitude, colorHex, track, description, starred)
+                   VALUES ('Opening Keynote', 'Ada Lovelace', '', '2026-10-20', '09:00', '10:00',
+                   'Main Hall', '', 40.7128, -74.006, '#0D9488', '', '', 1)"""
+            )
+        }
+
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, dbName)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val session = runBlocking { db.conferenceDao().getAllSessions().first() }.single()
+            assertEquals("Opening Keynote", session.title)
+            assertEquals("", session.extraJson)
+            assertEquals(4, db.openHelper.readableDatabase.version)
         } finally {
             db.close()
         }
