@@ -41,7 +41,7 @@ object AgendaLogic {
 
     /**
      * The ongoing session, or otherwise the soonest upcoming one; null when nothing is left.
-     * A session in its very last minute still counts, but yields to one that has already started, so
+     * A session in its very last minute still counts, but yields to one that starts at that very minute, so
      * back-to-back talks switch at the top of the hour. Among sessions that are on at once (or that start at the
      * same time) a starred one wins. Mirrors `AgendaTimeline.nextSession` on the watch.
      */
@@ -49,8 +49,9 @@ object AgendaLogic {
         val minute = now.truncatedTo(ChronoUnit.MINUTES)
         val live = sessions.filter { isOngoingOrUpcoming(it, now) }
         val ongoing = live.filter { startOf(it)?.isAfter(minute) == false }
-        // A session in its last minute yields to one that is already running (back-to-back talks).
-        val pool = ongoing.filter { endOf(it)?.isAfter(minute) == true }.ifEmpty { ongoing }.ifEmpty {
+        // A session in its last minute yields only to one that starts at that very minute (back-to-back talks).
+        val startingNow = ongoing.any { startOf(it) == minute }
+        val pool = (if (startingNow) ongoing.filter { endOf(it)?.isAfter(minute) == true } else ongoing).ifEmpty {
             val soonest = live.minOfOrNull { startOf(it) ?: LocalDateTime.MAX }
             live.filter { (startOf(it) ?: LocalDateTime.MAX) == soonest }
         }
