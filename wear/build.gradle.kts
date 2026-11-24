@@ -59,6 +59,8 @@ android {
         debug { }
     }
     compileOptions {
+        // :shared enables core library desugaring, and Android Gradle Plugin requires every app that uses it to do the same.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -70,6 +72,7 @@ android {
 
 dependencies {
     implementation(project(":shared"))
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(libs.androidx.concurrent.futures.ktx)
     implementation(libs.androidx.wear.complications.data.source.ktx)
     implementation(libs.androidx.wear.protolayout)
