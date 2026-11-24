@@ -65,6 +65,7 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
@@ -372,6 +373,7 @@ fun ConferenceMapScreen(
 private const val LOCATION_TIMEOUT_MS = 3000L
 
 /** The device's current position, or null when it can't be determined. Needs location permission. */
+@OptIn(ExperimentalCoroutinesApi::class)
 @SuppressLint("MissingPermission")
 private suspend fun currentPosition(context: Context): LatLng? {
     val cancellation = CancellationTokenSource()
