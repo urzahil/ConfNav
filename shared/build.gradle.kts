@@ -13,12 +13,14 @@ android {
         minSdk = 24
     }
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
 
 dependencies {
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
     api(libs.play.services.wearable)
     testImplementation(libs.junit)
 }

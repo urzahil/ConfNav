@@ -20,7 +20,8 @@ fun SessionTextField(
     trailingIcon: (@Composable () -> Unit)? = null,
     singleLine: Boolean = true,
     minLines: Int = 1,
-    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE
+    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
+    capitalization: KeyboardCapitalization = KeyboardCapitalization.Sentences
 ) {
     OutlinedTextField(
         value = value,
@@ -34,6 +35,6 @@ fun SessionTextField(
         singleLine = singleLine,
         minLines = minLines,
         maxLines = maxLines,
-        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
+        keyboardOptions = KeyboardOptions(capitalization = capitalization)
     )
 }

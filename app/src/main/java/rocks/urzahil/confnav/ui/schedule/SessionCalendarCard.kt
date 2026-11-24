@@ -160,7 +160,21 @@ fun SessionCalendarCard(
                                     fontWeight = FontWeight.Bold,
                                     color = locationColor,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                            }
+
+                            if (session.track.isNotBlank()) {
+                                Text(
+                                    text = session.track,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier
+                                        .padding(start = 6.dp)
+                                        .testTag("session_track")
                                 )
                             }
                         }

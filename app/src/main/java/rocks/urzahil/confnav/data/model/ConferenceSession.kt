@@ -22,7 +22,10 @@ data class ConferenceSession(
     val track: String = "",    // e.g. "Keynote", "AI & ML", "Architecture"
     val description: String = "",
     @ColumnInfo(defaultValue = "0")
-    val starred: Boolean = false   // Highlighted with a gold star and drawn on top in the calendar
+    val starred: Boolean = false,  // Highlighted with a gold star and drawn on top in the calendar
+    /** Keys of the imported JSON this app doesn't model (e.g. "url"), kept as a JSON object so export round-trips them. */
+    @ColumnInfo(defaultValue = "''")
+    val extraJson: String = ""
 ) {
     /**
      * False when the session has no usable coordinates (0,0 is the "not set" value).

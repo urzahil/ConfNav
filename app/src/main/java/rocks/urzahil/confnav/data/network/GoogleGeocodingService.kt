@@ -14,7 +14,8 @@ interface GoogleGeocodingService {
     suspend fun getPlaceAutocomplete(
         @Query("input") input: String,
         @Query("key") apiKey: String,
-        @Query("types") types: String? = "establishment|geocode"
+        @Query("types") types: String? = "establishment|geocode",
+        @Query("sessiontoken") sessionToken: String? = null
     ): PlacesAutocompleteResponse
 
     @GET("maps/api/geocode/json")

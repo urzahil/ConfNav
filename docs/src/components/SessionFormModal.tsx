@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { todayLocal } from '../utils/date';
 import { ConferenceSession, COLOR_PALETTE_PRESETS } from '../types';
 import { MapLocationPicker } from './MapLocationPicker';
 import { SessionStar, StarToggleButton } from './SessionStar';
@@ -37,7 +38,7 @@ export const SessionFormModal: React.FC<SessionFormModalProps> = ({
     id: '',
     title: '',
     speaker: '',
-    date: new Date().toISOString().split('T')[0],
+    date: todayLocal(),
     startTime: '09:00',
     endTime: '10:00',
     locationName: '',
@@ -62,7 +63,7 @@ export const SessionFormModal: React.FC<SessionFormModalProps> = ({
         id: `session-${Date.now()}`,
         title: '',
         speaker: '',
-        date: new Date().toISOString().split('T')[0],
+        date: todayLocal(),
         startTime: '09:00',
         endTime: '10:00',
         locationName: '',

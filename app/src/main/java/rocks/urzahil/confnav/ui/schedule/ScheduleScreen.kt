@@ -130,6 +130,7 @@ fun ScheduleScreen(
                 if (uiState.nextSession != null) {
                     NextEventPill(
                         session = uiState.nextSession,
+                        ongoing = uiState.nextSessionOngoing,
                         onNavigateToMap = { session ->
                             onNavigateToMap(session)
                         }

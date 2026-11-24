@@ -39,11 +39,23 @@ object AgendaLogic {
         return !end.isBefore(now.truncatedTo(ChronoUnit.MINUTES))
     }
 
-    /** The ongoing session, or otherwise the soonest upcoming one; null when nothing is left. */
-    fun nextSession(sessions: List<ConferenceSession>, now: LocalDateTime): ConferenceSession? =
-        sessions
-            .filter { isOngoingOrUpcoming(it, now) }
-            .minByOrNull { startOf(it) ?: LocalDateTime.MAX }
+    /**
+     * The ongoing session, or otherwise the soonest upcoming one; null when nothing is left.
+     * A session in its very last minute still counts, but yields to one that has already started, so
+     * back-to-back talks switch at the top of the hour. Among sessions that are on at once (or that start at the
+     * same time) a starred one wins. Mirrors `AgendaTimeline.nextSession` on the watch.
+     */
+    fun nextSession(sessions: List<ConferenceSession>, now: LocalDateTime): ConferenceSession? {
+        val minute = now.truncatedTo(ChronoUnit.MINUTES)
+        val live = sessions.filter { isOngoingOrUpcoming(it, now) }
+        val ongoing = live.filter { startOf(it)?.isAfter(minute) == false }
+        // A session in its last minute yields to one that is already running (back-to-back talks).
+        val pool = ongoing.filter { endOf(it)?.isAfter(minute) == true }.ifEmpty { ongoing }.ifEmpty {
+            val soonest = live.minOfOrNull { startOf(it) ?: LocalDateTime.MAX }
+            live.filter { (startOf(it) ?: LocalDateTime.MAX) == soonest }
+        }
+        return pool.sortedWith(compareBy({ !it.starred }, { startOf(it) ?: LocalDateTime.MAX })).firstOrNull()
+    }
 
     /** The sessions matching the day filter, limited to starred ones when [starredOnly] is set. */
     fun filterSessions(

@@ -13,12 +13,14 @@ import rocks.urzahil.confnav.data.model.ConferenceSession
 // Commit those files and add a migration (and a case in AppDatabaseMigrationTest) whenever `version` changes.
 @Database(
     entities = [ConferenceSession::class],
-    version = 3,
+    version = 4,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = AppDatabase.DropIsBookmarked::class),
         // v3 adds `starred` (defaults to not starred)
-        AutoMigration(from = 2, to = 3)
+        AutoMigration(from = 2, to = 3),
+        // v4 adds `extraJson` (custom JSON keys kept for export, empty by default)
+        AutoMigration(from = 3, to = 4)
     ]
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -1,6 +1,6 @@
 name: Release to Google Play closed testing
 
-# Bumps versionCode (phone and Wear OS; versionName is left as is), builds signed AABs, commits and tags the bump,
+# Bumps versionCode in gradle.properties (phone and Wear OS; versionName is left as is), builds signed AABs, commits and tags the bump,
 # uploads both bundles to Google Play closed testing and publishes a GitHub Release.
 
 on:
@@ -61,21 +61,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          current_code="$(sed -nE 's/^ *versionCode = ([0-9]+)$/\1/p' app/build.gradle.kts)"
-          current_name="$(sed -nE 's/^ *versionName = "([^"]+)"$/\1/p' app/build.gradle.kts)"
-          [[ -n "$current_code" && -n "$current_name" ]] || { echo "::error::Could not read version from app/build.gradle.kts"; exit 1; }
+          current_code="$(sed -nE 's/^confnav\.versionCode=([0-9]+)$/\1/p' gradle.properties)"
+          current_name="$(sed -nE 's/^confnav\.versionName=(.+)$/\1/p' gradle.properties)"
+          [[ -n "$current_code" && -n "$current_name" ]] || { echo "::error::Could not read version from gradle.properties"; exit 1; }
 
           new_code=$((current_code + 1))
-          # Keep the Wear OS offset documented in wear/build.gradle.kts.
+          # The Wear OS build derives its versionCode (phone + 1,000,000) and versionName from the same properties.
           wear_code=$((new_code + 1000000))
-          wear_code_literal="$(printf '%d' "$wear_code" | sed -E ':a;s/([0-9])([0-9]{3})($|_)/\1_\2\3/;ta')"
           new_name="$current_name"
 
-          sed -i -E "s/^( *versionCode = )[0-9]+$/\1$new_code/" app/build.gradle.kts
-          sed -i -E "s/^( *versionCode = )[0-9_]+$/\1$wear_code_literal/" wear/build.gradle.kts
-
-          grep -q "versionCode = $new_code$" app/build.gradle.kts
-          grep -q "versionCode = $wear_code_literal$" wear/build.gradle.kts
+          sed -i -E "s/^(confnav\.versionCode=)[0-9]+$/\1$new_code/" gradle.properties
+          grep -q "^confnav.versionCode=$new_code$" gradle.properties
           git diff --stat
 
           tag="v$new_name-$new_code"
@@ -132,7 +128,7 @@ jobs:
           set -eu
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/build.gradle.kts wear/build.gradle.kts
+          git add gradle.properties
           git commit -m "chore: release $VERSION_NAME (versionCode $VERSION_CODE)"
           # Pick up anything pushed to the branch while the build was running.
           git pull --rebase origin "$GITHUB_REF_NAME"

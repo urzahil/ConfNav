@@ -28,6 +28,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
@@ -43,6 +46,10 @@ data class ConferenceUiState(
     val locationGroups: List<LocationGroup> = emptyList(),
     val selectedLocationPin: LocationGroup? = null,
     val nextSession: ConferenceSession? = null,
+    /** True when [nextSession] is already in progress (shown as NOW rather than UP NEXT). */
+    val nextSessionOngoing: Boolean = false,
+    /** The clock the state was built at; refreshed every minute. */
+    val now: LocalDateTime = LocalDateTime.now(),
     val selectedFilter: DayFilter = DayFilter.All,
     val starredOnly: Boolean = false,
     val availableFilters: List<DayFilter> = listOf(DayFilter.All),
@@ -131,12 +138,16 @@ class ConferenceViewModel(application: Application) : AndroidViewModel(applicati
         // If the selected pin is no longer present, drop the selection.
         val activePin = selectedPin?.let { pin -> locationGroups.firstOrNull { it.key == pin.key } }
 
+        val next = AgendaLogic.nextSession(sessions, now)
+
         return ConferenceUiState(
             sessions = sessions,
             filteredSessions = filtered,
             locationGroups = locationGroups,
             selectedLocationPin = activePin,
-            nextSession = AgendaLogic.nextSession(sessions, now),
+            nextSession = next,
+            nextSessionOngoing = next?.let { AgendaLogic.startOf(it)?.isAfter(now) == false } ?: false,
+            now = now,
             selectedFilter = filter,
             starredOnly = onlyStarred,
             availableFilters = availableFilters,
@@ -152,6 +163,22 @@ class ConferenceViewModel(application: Application) : AndroidViewModel(applicati
     fun setStarredOnly(enabled: Boolean) {
         starredOnly.value = enabled
     }
+
+    /**
+     * The map pin for the venue of [session], or null when the venue has no pin (no coordinates, or
+     * only past sessions). Matches by venue rather than session id, since the map lists only ongoing
+     * or upcoming sessions, so a past session's own id is not in its venue's group.
+     */
+    fun locationGroupFor(session: ConferenceSession): LocationGroup? {
+        val key = repository.locationKey(session)
+        return uiState.value.locationGroups.firstOrNull { it.key == key }
+    }
+
+    /**
+     * A parsed import waiting for the user's add-or-replace choice. Held here rather than in the
+     * composable so the dialog survives screen rotation and theme changes.
+     */
+    var pendingImport by mutableStateOf<ImportReport?>(null)
 
     fun selectLocationPin(pin: LocationGroup?) {
         selectedLocationPin.value = pin

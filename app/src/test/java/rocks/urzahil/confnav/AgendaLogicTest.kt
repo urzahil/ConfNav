@@ -42,6 +42,29 @@ class AgendaLogicTest {
     }
 
     @Test
+    fun `back-to-back talks switch at the top of the hour`() {
+        val first = session(1, "2026-10-05", "09:00", "10:00")
+        val second = session(2, "2026-10-05", "10:00", "11:00")
+        val at1000 = noon.withHour(10).withMinute(0)
+
+        assertEquals(1L, AgendaLogic.nextSession(listOf(first, second), at1000.minusMinutes(1))?.id)
+        assertEquals(2L, AgendaLogic.nextSession(listOf(first, second), at1000)?.id)
+    }
+
+    @Test
+    fun `a starred session wins among sessions on at the same time`() {
+        val plain = session(1, "2026-10-05", "09:00", "10:00")
+        val starred = session(2, "2026-10-05", "09:00", "10:00", "Room B").copy(starred = true)
+        val workshop = session(3, "2026-10-05", "09:00", "11:00")
+        val starredTalk = session(4, "2026-10-05", "10:00", "10:30").copy(starred = true)
+        val nine = noon.withHour(8).withMinute(30)
+
+        assertEquals(2L, AgendaLogic.nextSession(listOf(plain, starred), nine)?.id)
+        assertEquals(3L, AgendaLogic.nextSession(listOf(workshop, starredTalk), nine.withHour(9).withMinute(30))?.id)
+        assertEquals(4L, AgendaLogic.nextSession(listOf(workshop, starredTalk), nine.withHour(10).withMinute(0))?.id)
+    }
+
+    @Test
     fun `sessions with unreadable times are never upcoming`() {
         assertFalse(AgendaLogic.isOngoingOrUpcoming(session(1, "soon", "09:00", "10:00"), noon))
     }

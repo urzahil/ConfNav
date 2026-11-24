@@ -1,5 +1,6 @@
 package rocks.urzahil.confnav.ui.components
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -46,6 +47,7 @@ import rocks.urzahil.confnav.ui.icons.filled.Directions
 fun NextEventPill(
     session: ConferenceSession?,
     modifier: Modifier = Modifier,
+    ongoing: Boolean = false,
     onNavigateToMap: ((ConferenceSession) -> Unit)? = null
 ) {
     if (session == null) return
@@ -84,7 +86,7 @@ fun NextEventPill(
                             .background(locationColor)
                     )
                     Text(
-                        text = "UP NEXT",
+                        text = if (ongoing) "NOW" else "UP NEXT",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.ExtraBold,
                         color = locationColor,
@@ -203,14 +205,13 @@ fun openDirections(context: Context, session: ConferenceSession) {
             setPackage("com.google.android.apps.maps")
         }
 
-        if (mapIntent.resolveActivity(context.packageManager) != null) {
+        try {
             context.startActivity(mapIntent)
-        } else {
-            // Fallback to generic geo intent
+        } catch (_: ActivityNotFoundException) {
+            // Google Maps isn't installed (resolveActivity can't be used: package visibility hides it on Android 11+)
             val geoUri =
                 Uri.parse("geo:0,0?q=${session.latitude},${session.longitude}(${Uri.encode(session.locationName)})")
-            val fallbackIntent = Intent(Intent.ACTION_VIEW, geoUri)
-            context.startActivity(fallbackIntent)
+            context.startActivity(Intent(Intent.ACTION_VIEW, geoUri))
         }
     } catch (_: Exception) {
         // If no maps app available, open browser Google Maps

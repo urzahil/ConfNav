@@ -37,6 +37,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import rocks.urzahil.confnav.data.model.SessionJsonHelper
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -218,6 +222,31 @@ fun SessionDetailsDialog(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                        }
+                    }
+
+                    if (session.track.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Track: ${session.track}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.testTag("session_details_track")
+                        )
+                    }
+
+                    // Custom "url" key kept from an imported file; only web links are opened.
+                    val link = remember(session.extraJson) {
+                        SessionJsonHelper.extraText(session, "url")
+                            ?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
+                    }
+                    if (link != null) {
+                        val uriHandler = LocalUriHandler.current
+                        TextButton(
+                            onClick = { runCatching { uriHandler.openUri(link) } },
+                            modifier = Modifier.testTag("session_details_link")
+                        ) {
+                            Text("Open session page")
                         }
                     }
 

@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.util.Locale
+import java.util.UUID
 import kotlin.coroutines.resume
 
 class LocationSearchHelper(
@@ -32,6 +33,13 @@ class LocationSearchHelper(
         .takeIf { it.isNotBlank() && !it.contains("YOUR_GOOGLE_MAPS_API_KEY") }
         .orEmpty()
 
+    /**
+     * Autocomplete session token: groups the keystrokes of one search flow into a single billed session.
+     * Rotated after a place is picked ([resolvePlaceIdCoordinates]) so the next search starts a new one.
+     */
+    @Volatile
+    private var sessionToken: String = UUID.randomUUID().toString()
+
     suspend fun searchSuggestions(query: String): List<LocationSuggestion> =
         withContext(Dispatchers.IO) {
             val cleanQuery = query.trim()
@@ -44,7 +52,10 @@ class LocationSearchHelper(
             // 1. Google Places Autocomplete API
             if (apiKey.isNotEmpty()) {
                 try {
-                    val response = service.getPlaceAutocomplete(input = cleanQuery, apiKey = apiKey)
+                    val response = service.getPlaceAutocomplete(input = cleanQuery, apiKey = apiKey, sessionToken = sessionToken)
+                    if (response.status != "OK" && response.status != "ZERO_RESULTS") {
+                        Log.w(TAG, "Places autocomplete returned ${response.status}: ${response.errorMessage}")
+                    }
                     if (response.status == "OK" && response.predictions.isNotEmpty()) {
                         for (pred in response.predictions) {
                             val mainText = pred.structuredFormatting?.mainText
@@ -168,8 +179,13 @@ class LocationSearchHelper(
         withContext(Dispatchers.IO) {
             if (apiKey.isBlank()) return@withContext null
 
+            // The picked place ends the autocomplete session; the next search gets a fresh token.
+            sessionToken = UUID.randomUUID().toString()
             try {
                 val response = service.geocodePlaceId(placeId = placeId, apiKey = apiKey)
+                if (response.status != "OK" && response.status != "ZERO_RESULTS") {
+                    Log.w(TAG, "Geocoding returned ${response.status}: ${response.errorMessage}")
+                }
                 val location = response.results.firstOrNull()?.geometry?.location
                 if (location != null) {
                     return@withContext Pair(location.lat, location.lng)
@@ -192,11 +208,11 @@ class LocationSearchHelper(
                 suspendCancellableCoroutine<List<Address>> { cont ->
                     geocoder.getFromLocationName(query, 5, object : Geocoder.GeocodeListener {
                         override fun onGeocode(addresses: MutableList<Address>) {
-                            cont.resume(addresses)
+                            if (cont.isActive) cont.resume(addresses)
                         }
 
                         override fun onError(errorMessage: String?) {
-                            cont.resume(emptyList())
+                            if (cont.isActive) cont.resume(emptyList())
                         }
                     })
                 }

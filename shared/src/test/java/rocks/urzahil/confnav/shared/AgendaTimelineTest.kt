@@ -32,6 +32,18 @@ class AgendaTimelineTest {
     }
 
     @Test
+    fun `back-to-back talks switch at the top of the hour and starred sessions win ties`() {
+        val first = session("First", "2026-10-05", "09:00", "10:00")
+        val second = session("Second", "2026-10-05", "10:00", "11:00")
+        assertEquals("First", AgendaTimeline.nextSession(listOf(first, second), at(9, 59))?.title)
+        assertEquals("Second", AgendaTimeline.nextSession(listOf(first, second), at(10))?.title)
+
+        val plain = session("Plain", "2026-10-05", "09:00", "10:00")
+        val starred = session("Starred", "2026-10-05", "09:00", "10:00").copy(starred = true)
+        assertEquals("Starred", AgendaTimeline.nextSession(listOf(plain, starred), at(8))?.title)
+    }
+
+    @Test
     fun `timeline covers the day with a slot per change`() {
         val slots = AgendaTimeline.build(listOf(tomorrow, afternoon, morning), at(8))
 

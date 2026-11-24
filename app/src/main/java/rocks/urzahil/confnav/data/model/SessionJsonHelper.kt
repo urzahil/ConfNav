@@ -29,6 +29,11 @@ object SessionJsonHelper {
     private val DATE_FORMAT = DateTimeFormatter.ofPattern("uuuu-M-d").withResolverStyle(ResolverStyle.STRICT)
     private val TIME_FORMAT = DateTimeFormatter.ofPattern("H:mm").withResolverStyle(ResolverStyle.STRICT)
     private val OUTPUT_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm")
+    /** The keys ConfNav models itself; every other key of an imported row is kept in `extraJson`. */
+    private val KNOWN_KEYS = setOf(
+        "title", "speaker", "speakerRole", "date", "startTime", "endTime", "locationName", "address",
+        "latitude", "longitude", "colorHex", "track", "description", "starred"
+    )
     private val HEX_COLOR = Regex("^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$")
 
     /** Strict `yyyy-MM-dd` parsing (also tolerates a missing leading zero, which is normalised). */
@@ -59,6 +64,23 @@ object SessionJsonHelper {
         return expanded.uppercase()
     }
 
+    /** The custom (non-modelled) keys kept from the imported row, or empty when there are none. */
+    fun extraFields(session: ConferenceSession): Map<String, Any?> {
+        if (session.extraJson.isBlank()) return emptyMap()
+        return try {
+            (anyAdapter.fromJson(session.extraJson) as? Map<*, *>)
+                ?.entries
+                ?.associate { (k, v) -> k.toString() to v }
+                .orEmpty()
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
+    /** A custom text value such as `url`, or null when absent or blank. */
+    fun extraText(session: ConferenceSession, key: String): String? =
+        (extraFields(session)[key] as? String)?.trim()?.takeIf { it.isNotEmpty() }
+
     /** Exports a list of [ConferenceSession] to a formatted JSON string. */
     fun exportToJson(sessions: List<ConferenceSession>): String {
         val list = sessions.map { session ->
@@ -77,6 +99,8 @@ object SessionJsonHelper {
             if (session.track.isNotBlank()) obj["track"] = session.track
             if (session.description.isNotBlank()) obj["description"] = session.description
             if (session.starred) obj["starred"] = true
+            // Custom keys from the imported file come back out unchanged (never overriding a known key).
+            extraFields(session).forEach { (key, value) -> if (key !in KNOWN_KEYS) obj[key] = value }
             obj
         }
         return anyAdapter.indent("  ").toJson(list)
@@ -190,9 +214,18 @@ object SessionJsonHelper {
                 colorHex = normalizeColor(obj.text("colorHex")),
                 track = obj.text("track"),
                 description = obj.text("description"),
-                starred = obj.flag("starred")
+                starred = obj.flag("starred"),
+                extraJson = extraJsonOf(obj)
             )
         )
+    }
+
+    /** The row's custom keys as a JSON object string, or empty when it has none. */
+    private fun extraJsonOf(obj: Map<*, *>): String {
+        val extras = obj.entries
+            .filter { (k, v) -> k is String && k !in KNOWN_KEYS && v != null }
+            .associate { (k, v) -> k as String to v }
+        return if (extras.isEmpty()) "" else anyAdapter.toJson(extras)
     }
 
     /** Reads a value as trimmed text. JSON `null` and non-scalar values become an empty string. */
